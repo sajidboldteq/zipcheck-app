@@ -14,7 +14,7 @@ const settingsRouter  = require("./routes/settings");
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ FIX 1: Corrected HOST URL to match your actual Railway deployment
+// ✅ FIXED: Correct Railway URL
 const HOST = process.env.HOST || "https://zipcheck-app-production.up.railway.app";
 
 // ── Shopify Setup ─────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ const shopify = shopifyApi({
   apiSecretKey:  process.env.SHOPIFY_API_SECRET || "",
   scopes:        (process.env.SCOPES || "read_products,write_script_tags").split(","),
   hostName:      HOST.replace(/https?:\/\//, ""),
-  apiVersion:    "2025-01",  // ✅ FIX 2: Must be a string, not a math expression (2025-01 = 2024)
+  apiVersion:    "2025-01",  // ✅ FIXED: String not math expression
   isEmbeddedApp: true,
   logger:        { level: LogSeverity.Info },
 });
@@ -58,15 +58,22 @@ app.get("/auth/callback", async (req, res) => {
     // Save session
     const { read, write } = require("./utils/store");
     const sessions = read("sessions") || {};
-    sessions[session.shop] = { shop: session.shop, accessToken: session.accessToken, installedAt: new Date().toISOString() };
+    sessions[session.shop] = {
+      shop:        session.shop,
+      accessToken: session.accessToken,
+      installedAt: new Date().toISOString()
+    };
     write("sessions", sessions);
 
     // Register widget script tag
     try {
       const client = new shopify.clients.Rest({ session });
-      await client.post({ path: "script_tags", data: { script_tag: { event: "onload", src: `${HOST}/widget.js` } } });
+      await client.post({
+        path: "script_tags",
+        data: { script_tag: { event: "onload", src: `${HOST}/widget.js` } }
+      });
       console.log("✅ Widget script tag registered");
-    } catch (e) { console.log("Script tag:", e.message); }
+    } catch (e) { console.log("Script tag error:", e.message); }
 
     res.redirect(`https://${session.shop}/admin/apps/${shopify.config.apiKey}`);
   } catch (e) {
@@ -74,6 +81,33 @@ app.get("/auth/callback", async (req, res) => {
     res.status(500).send("Callback failed: " + e.message);
   }
 });
+
+// ── Embedded App Home Routes ✅ NEW ───────────────────────────────────────────
+const embeddedHTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Zip Code Checker</title>
+    <style>
+      body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; text-align: center; }
+      h1 { color: #008060; }
+      p  { color: #555; font-size: 16px; }
+      .badge { background: #e8f5e9; color: #008060; padding: 8px 20px; border-radius: 20px; font-weight: bold; display: inline-block; margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>✅ Zip Code Checker</h1>
+    <p>Your app is installed and active!</p>
+    <div class="badge">Widget is live on your product pages</div>
+    <p style="margin-top:30px; color:#999; font-size:14px;">
+      The delivery availability widget will appear above the Add to Cart button on all product pages.
+    </p>
+  </body>
+</html>
+`;
+
+app.get("/", (req, res) => res.send(embeddedHTML));
+app.get("/app", (req, res) => res.send(embeddedHTML));
 
 // ── Widget JS ─────────────────────────────────────────────────────────────────
 app.get("/widget.js", (req, res) => {
@@ -99,8 +133,9 @@ app.get("/widget.js", (req, res) => {
     try {
       var r = await fetch('${HOST}/api/check/lookup/'+zip);
       var d = (await r.json()).data;
-      out.innerHTML = d.allowed ? '<span style="color:#008060">✅ '+(d.message||'Delivery available!'): '<span style="color:#d72c0d">🚫 '+(d.message||'Delivery not available.');
-      out.innerHTML += '</span>';
+      out.innerHTML = d.allowed
+        ? '<span style="color:#008060">✅ '+(d.message||'Delivery available!')+'</span>'
+        : '<span style="color:#d72c0d">🚫 '+(d.message||'Delivery not available.')+'</span>';
     } catch(e){out.innerHTML='<span style="color:#d72c0d">Error checking. Try again.</span>';}
   };
   document.getElementById('zc-zip').onkeydown=function(e){if(e.key==='Enter')document.getElementById('zc-btn').click();};
