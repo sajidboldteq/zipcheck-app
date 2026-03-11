@@ -13,7 +13,9 @@ const settingsRouter  = require("./routes/settings");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || "https://zip-code-checker-production.up.railway.app";
+
+// ✅ FIX 1: Corrected HOST URL to match your actual Railway deployment
+const HOST = process.env.HOST || "https://zipcheck-app-production.up.railway.app";
 
 // ── Shopify Setup ─────────────────────────────────────────────────────────────
 const shopify = shopifyApi({
@@ -21,7 +23,7 @@ const shopify = shopifyApi({
   apiSecretKey:  process.env.SHOPIFY_API_SECRET || "",
   scopes:        (process.env.SCOPES || "read_products,write_script_tags").split(","),
   hostName:      HOST.replace(/https?:\/\//, ""),
-  apiVersion:    2025-01,
+  apiVersion:    "2025-01",  // ✅ FIX 2: Must be a string, not a math expression (2025-01 = 2024)
   isEmbeddedApp: true,
   logger:        { level: LogSeverity.Info },
 });
