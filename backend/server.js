@@ -102,7 +102,34 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
-app.get("/", (req, res) => res.send(buildAdminHTML()));
+app.get("/", (req, res) => {
+  const { host, shop } = req.query;
+  // Shopify embedded load — use App Bridge to load inside admin iframe
+  if (host) {
+    return res.send(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+<script>
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    var host = params.get('host');
+    var AppBridge = window['app-bridge'];
+    if (AppBridge && host) {
+      var app = AppBridge.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: true });
+      var Redirect = AppBridge.actions.Redirect;
+      var redirect = Redirect.create(app);
+      redirect.dispatch(Redirect.Action.APP, '/app');
+    } else {
+      window.location.href = '/app';
+    }
+  })();
+</script>
+</head><body style="background:#f6f6f7;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;font-size:14px">
+  Loading Zip Code Checker...
+</body></html>`);
+  }
+  res.send(buildAdminHTML());
+});
 app.get("/app", (req, res) => res.send(buildAdminHTML()));
 
 // ── Widget JS ─────────────────────────────────────────────────────────────────
