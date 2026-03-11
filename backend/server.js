@@ -102,34 +102,7 @@ app.get("/auth/callback", async (req, res) => {
 });
 
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
-app.get("/", (req, res) => {
-  const { host, shop } = req.query;
-  // Shopify embedded load — use App Bridge to load inside admin iframe
-  if (host) {
-    return res.send(`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-<script>
-  (function(){
-    var params = new URLSearchParams(window.location.search);
-    var host = params.get('host');
-    var AppBridge = window['app-bridge'];
-    if (AppBridge && host) {
-      var app = AppBridge.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: true });
-      var Redirect = AppBridge.actions.Redirect;
-      var redirect = Redirect.create(app);
-      redirect.dispatch(Redirect.Action.APP, '/app');
-    } else {
-      window.location.href = '/app';
-    }
-  })();
-</script>
-</head><body style="background:#f6f6f7;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280;font-size:14px">
-  Loading Zip Code Checker...
-</body></html>`);
-  }
-  res.send(buildAdminHTML());
-});
+app.get("/", (req, res) => res.send(buildAdminHTML()));
 app.get("/app", (req, res) => res.send(buildAdminHTML()));
 
 // ── Widget JS ─────────────────────────────────────────────────────────────────
@@ -184,11 +157,11 @@ function buildAdminHTML() {
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--green:#008060;--green-lt:#e3f1ed;--green-dk:#004c3f;--red:#d72c0d;--red-lt:#fce8e3;--g900:#1a1a1a;--g700:#3d4047;--g500:#6b7280;--g300:#c9cccf;--g200:#e4e5e7;--g100:#f1f3f4;--g50:#f6f6f7;--white:#fff;--r:10px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace}
-body{font-family:var(--font);background:var(--g50);color:var(--g900);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:var(--g50);color:var(--g900);height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;overflow:hidden}
 .topbar{background:var(--green-dk);height:52px;display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
 .topbar-icon{background:var(--green);width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:16px}
 .topbar h1{font-size:15px;font-weight:700;color:#fff}
-.shell{display:flex;flex:1;overflow:hidden}
+.shell{display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px)}
 .sidebar{width:210px;background:var(--white);border-right:1px solid var(--g200);padding:12px 0;flex-shrink:0}
 .nav-label{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g300);margin-top:8px}
 .nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 14px;border:none;background:none;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:500;color:var(--g500);text-align:left;transition:all .15s}
