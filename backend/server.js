@@ -150,21 +150,28 @@ app.listen(PORT, () => {
   console.log(`🔐 Install:   ${HOST}/auth?shop=YOUR_STORE.myshopify.com\n`);
 });
 
+
 // ── Admin HTML ────────────────────────────────────────────────────────────────
 function buildAdminHTML() {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Zip Code Checker</title>
+  const h = HOST;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Zip Code Checker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--green:#008060;--green-lt:#e3f1ed;--green-dk:#004c3f;--red:#d72c0d;--red-lt:#fce8e3;--g900:#1a1a1a;--g700:#3d4047;--g500:#6b7280;--g300:#c9cccf;--g200:#e4e5e7;--g100:#f1f3f4;--g50:#f6f6f7;--white:#fff;--r:10px;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace}
-body{font-family:var(--font);background:var(--g50);color:var(--g900);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+:root{--green:#008060;--green-lt:#e3f1ed;--green-dk:#004c3f;--red:#d72c0d;--red-lt:#fce8e3;--g900:#1a1a1a;--g700:#3d4047;--g500:#6b7280;--g300:#c9cccf;--g200:#e4e5e7;--g100:#f1f3f4;--g50:#f6f6f7;--white:#fff;--r:10px}
+body{font-family:'DM Sans',sans-serif;background:var(--g50);color:var(--g900);min-height:100vh;display:flex;flex-direction:column}
 .topbar{background:var(--green-dk);height:52px;display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
 .topbar-icon{background:var(--green);width:30px;height:30px;border-radius:7px;display:grid;place-items:center;font-size:16px}
 .topbar h1{font-size:15px;font-weight:700;color:#fff}
-.shell{display:flex;flex:1;overflow:hidden}
-.sidebar{width:210px;background:var(--white);border-right:1px solid var(--g200);padding:12px 0;flex-shrink:0}
+.shell{display:flex;flex:1;min-height:0}
+.sidebar{width:210px;background:var(--white);border-right:1px solid var(--g200);padding:12px 0;flex-shrink:0;overflow-y:auto}
 .nav-label{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g300);margin-top:8px}
-.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 14px;border:none;background:none;cursor:pointer;font-family:var(--font);font-size:14px;font-weight:500;color:var(--g500);text-align:left;transition:all .15s}
+.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 14px;border:none;background:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--g500);text-align:left;transition:all .15s}
 .nav-btn:hover{background:var(--g50);color:var(--g900)}.nav-btn.active{background:var(--green-lt);color:var(--green-dk);font-weight:700}
 .content{flex:1;overflow-y:auto;padding:28px}
 .page{display:none}.page.active{display:block;max-width:860px}
@@ -172,7 +179,7 @@ body{font-family:var(--font);background:var(--g50);color:var(--g900);min-height:
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
 .stat{background:var(--white);border:1px solid var(--g200);border-radius:var(--r);padding:18px 20px}
 .stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g500);margin-bottom:6px}
-.stat-val{font-size:28px;font-weight:800;font-family:var(--mono)}.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}
+.stat-val{font-size:28px;font-weight:800;font-family:'DM Mono',monospace}.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}
 .card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
 .card-head{padding:14px 18px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:8px}
 .card-head h2{font-size:14px;font-weight:700;flex:1}
@@ -180,17 +187,18 @@ body{font-family:var(--font);background:var(--g50);color:var(--g900);min-height:
 .form-row{padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--g100)}
 .fld{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
 .fld label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g500)}
-.fld input,.fld select{padding:8px 11px;border:1.5px solid var(--g200);border-radius:8px;font-size:14px;font-family:var(--font);outline:none;color:var(--g900);transition:border-color .15s;background:var(--white)}
+.fld input,.fld select{padding:8px 11px;border:1.5px solid var(--g200);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;color:var(--g900);transition:border-color .15s;background:var(--white)}
 .fld input:focus,.fld select:focus{border-color:var(--green)}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:var(--font);transition:all .15s}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;transition:all .15s}
 .btn-primary{background:var(--green);color:#fff}.btn-primary:hover{background:var(--green-dk)}
-.btn-danger{background:var(--red-lt);color:var(--red)}.btn-ghost{background:var(--g100);color:var(--g700)}.btn-ghost:hover{background:var(--g200)}
+.btn-danger{background:var(--red-lt);color:var(--red)}.btn-danger:hover{background:#ffd9d3}
+.btn-ghost{background:var(--g100);color:var(--g700)}.btn-ghost:hover{background:var(--g200)}
 .btn-sm{padding:5px 11px;font-size:12px}
 .tbl-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse}
 thead tr{background:var(--g50);border-bottom:1px solid var(--g200)}
 th{padding:9px 14px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g500);white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--g100)}tbody tr:last-child{border-bottom:none}tbody tr:hover{background:var(--g50)}
-td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:600}
+td{padding:10px 14px;font-size:14px}td.mono{font-family:'DM Mono',monospace;font-weight:600}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700}
 .badge-allow{background:var(--green-lt);color:var(--green-dk)}.badge-deny,.badge-block{background:var(--red-lt);color:var(--red)}
 .toggle{position:relative;width:36px;height:20px;cursor:pointer;display:inline-block}
@@ -199,21 +207,26 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
 .slider::after{content:'';position:absolute;left:3px;top:3px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle input:checked+.slider{background:var(--green)}.toggle input:checked+.slider::after{transform:translateX(16px)}
 .empty{padding:40px;text-align:center;color:var(--g500)}.empty-icon{font-size:36px;margin-bottom:8px}
-.code-block{background:#1a1a2e;color:#a8ff78;font-family:var(--mono);font-size:13px;padding:16px 20px;border-radius:8px;overflow-x:auto;white-space:pre;margin:10px 0;position:relative;line-height:1.7}
-.copy-btn{position:absolute;right:10px;top:10px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:var(--font);font-weight:600}
+.code-block{background:#1a1a2e;color:#a8ff78;font-family:'DM Mono',monospace;font-size:13px;padding:16px 20px;border-radius:8px;overflow-x:auto;white-space:pre;margin:10px 0;position:relative;line-height:1.7}
+.copy-btn{position:absolute;right:10px;top:10px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600}
 .info-box{background:#fff8e1;border:1px solid #f9c74f;border-radius:8px;padding:12px 16px;font-size:13px;color:#7c5800;margin:10px 0;line-height:1.6}
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:18px}
 .set-item{display:flex;flex-direction:column;gap:5px}
 .set-item label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g500)}
-.set-item input{padding:8px 11px;border:1.5px solid var(--g200);border-radius:8px;font-size:14px;font-family:var(--font);outline:none;background:var(--white)}
+.set-item input{padding:8px 11px;border:1.5px solid var(--g200);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;background:var(--white)}
 .set-item input:focus{border-color:var(--green)}
 .color-row{display:flex;align-items:center;gap:8px}.color-row input[type=color]{width:38px;height:34px;padding:2px;border:1.5px solid var(--g200);border-radius:6px;cursor:pointer}.color-row input[type=text]{flex:1}
 .preview-wrap{padding:18px;background:var(--g50);border-top:1px solid var(--g200)}
 .preview-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g500);margin-bottom:10px}
 #toast{position:fixed;bottom:20px;right:20px;background:var(--g900);color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:9999}
 #toast.on{opacity:1;transform:translateY(0)}#toast.s{background:var(--green)}#toast.e{background:var(--red)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:14px;width:min(700px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 @media(max-width:640px){.sidebar{display:none}.stats{grid-template-columns:1fr 1fr}.settings-grid{grid-template-columns:1fr}}
-</style></head><body>
+</style>
+</head>
+<body>
 <div class="topbar"><div class="topbar-icon">📍</div><h1>Zip Code Checker — Admin Dashboard</h1></div>
 <div class="shell">
 <nav class="sidebar">
@@ -225,6 +238,8 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
   <button class="nav-btn" onclick="nav(this,'analytics')">📊&nbsp; Analytics</button>
 </nav>
 <main class="content">
+
+<!-- ═══ Zip Rules Page ═══ -->
 <div class="page active" id="page-rules">
   <div class="page-title">Zip Code Rules</div>
   <div class="page-sub">Add zip / postal codes and mark Allow or Deny. Widget checks these in real time.</div>
@@ -236,35 +251,32 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
   <div class="card">
     <div class="card-head"><h2>➕ Add New Rule</h2></div>
     <div class="form-row">
-      <div class="fld" style="max-width:170px"><label>Zip / Postal Code</label><input id="f-zip" placeholder="e.g. 10001 or 400001" maxlength="10"/></div>
+      <div class="fld" style="max-width:180px"><label>Zip / Postal Code</label><input id="f-zip" placeholder="e.g. 10001 or 400001" maxlength="10"/></div>
       <div class="fld" style="max-width:150px"><label>Type</label><select id="f-type"><option value="allow">✅ Allow</option><option value="deny">🚫 Deny</option></select></div>
       <div class="fld"><label>Custom Message (optional)</label><input id="f-msg" placeholder="e.g. Delivery in 2 days!"/></div>
       <div class="fld" style="flex:0;min-width:auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addRule()">Add Rule</button></div>
     </div>
   </div>
-  <!-- Import / Export Card -->
   <div class="card">
     <div class="card-head"><h2>📂 Import &amp; Export</h2></div>
-    <div style="padding:16px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid var(--g100)">
+    <div style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:center">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--g700);margin-bottom:6px">📤 Export all zip codes</div>
+        <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Export All</div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="exportRules('csv')">⬇️ CSV</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportRules('xlsx')">⬇️ Excel (.xlsx)</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportRules('xlsx')">⬇️ Excel</button>
         </div>
       </div>
-      <div style="width:1px;height:40px;background:var(--g200);margin:0 6px"></div>
+      <div style="width:1px;height:36px;background:var(--g200)"></div>
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--g700);margin-bottom:6px">📥 Bulk import from file</div>
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('imp-modal').style.display='flex'">⬆️ Upload CSV / Excel</button>
+        <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Bulk Import</div>
+        <button class="btn btn-primary btn-sm" onclick="openImport()">⬆️ Upload CSV / Excel</button>
       </div>
       <div style="margin-left:auto">
-        <a href="#" style="font-size:12px;color:var(--g500);text-decoration:none" onclick="downloadTemplate()">⬇️ Download template</a>
+        <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">⬇️ Template</button>
       </div>
     </div>
   </div>
-
-  <!-- All Rules Table -->
   <div class="card">
     <div class="card-head">
       <h2>📋 All Rules</h2><span class="cnt" id="rules-cnt">0</span>
@@ -280,71 +292,7 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
   </div>
 </div>
 
-<!-- ── Import Modal ─────────────────────────────────────────────────────────── -->
-<div id="imp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;width:min(700px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)">
-    <div style="padding:18px 22px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px">
-      <span style="font-size:18px">📥</span>
-      <span style="font-size:16px;font-weight:800">Bulk Import Zip Codes</span>
-      <button onclick="closeImport()" style="margin-left:auto;border:none;background:none;font-size:20px;cursor:pointer;color:var(--g500)">✕</button>
-    </div>
-    <div style="padding:20px 22px;overflow-y:auto;flex:1">
-
-      <!-- Step 1: Upload -->
-      <div id="imp-step1">
-        <div style="font-size:13px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 1 — Choose File</div>
-        <div id="drop-zone" onclick="document.getElementById('file-inp').click()"
-          style="border:2px dashed var(--g300);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)"
-          ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-lt)'"
-          ondragleave="this.style.borderColor='var(--g300)';this.style.background='var(--g50)'"
-          ondrop="handleDrop(event)">
-          <div style="font-size:36px;margin-bottom:8px">📄</div>
-          <div style="font-size:15px;font-weight:700;margin-bottom:4px">Click to browse or drag & drop</div>
-          <div style="font-size:13px;color:var(--g500)">Supports .csv and .xlsx files up to 10MB</div>
-          <input type="file" id="file-inp" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(this.files[0])"/>
-        </div>
-        <div style="margin-top:12px;font-size:13px;color:var(--g500)">
-          <strong>Required column:</strong> <code>ZipCode</code> &nbsp;&nbsp;
-          <strong>Optional:</strong> <code>Type</code> (allow/deny), <code>Message</code>
-        </div>
-      </div>
-
-      <!-- Step 2: Preview -->
-      <div id="imp-step2" style="display:none">
-        <div style="font-size:13px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 2 — Preview &amp; Confirm</div>
-        <div id="imp-summary" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
-        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
-          <span style="font-size:13px;font-weight:600">Import mode:</span>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
-            <input type="radio" name="imp-mode" value="merge" checked/> Merge (keep existing)
-          </label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
-            <input type="radio" name="imp-mode" value="replace"/> Replace all
-          </label>
-        </div>
-        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px">
-          <table style="width:100%;border-collapse:collapse">
-            <thead style="position:sticky;top:0;background:var(--g50)">
-              <tr>
-                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Zip Code</th>
-                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Type</th>
-                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Message</th>
-                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Status</th>
-              </tr>
-            </thead>
-            <tbody id="imp-preview-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-    <div style="padding:14px 22px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
-      <button class="btn btn-ghost" id="imp-back-btn" style="display:none" onclick="impBack()">← Back</button>
-      <button class="btn btn-primary" id="imp-action-btn" onclick="impAction()">Choose File</button>
-    </div>
-  </div>
-</div>
+<!-- ═══ Settings Page ═══ -->
 <div class="page" id="page-settings">
   <div class="page-title">Widget Settings</div>
   <div class="page-sub">Customize the widget colors and text.</div>
@@ -367,7 +315,7 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
   </div>
   <div class="card">
     <div class="card-head"><h2>👁️ Live Preview</h2></div>
-    <div class="preview-wrap"><div class="preview-label">Preview</div>
+    <div class="preview-wrap"><div class="preview-label">Widget Preview</div>
       <div style="max-width:400px;border:1px solid #e4e5e7;border-radius:10px;padding:16px;background:#fff">
         <div id="pv-title" style="font-weight:700;font-size:14px;margin-bottom:10px">📍 Check Delivery Availability</div>
         <div style="display:flex;gap:8px"><input id="pv-input" placeholder="Enter zip / postal code" style="flex:1;padding:9px 12px;border:1.5px solid #c9cccf;border-radius:8px;font-size:15px;outline:none" readonly/><button id="pv-btn" style="padding:9px 18px;background:#008060;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Check</button></div>
@@ -376,230 +324,420 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
     </div>
   </div>
 </div>
+
+<!-- ═══ Embed Page ═══ -->
 <div class="page" id="page-embed">
-  <div class="page-title">Embed & Shortcode</div>
-  <div class="page-sub">Add the zip checker anywhere. You control placement — no auto-injection.</div>
+  <div class="page-title">Embed &amp; Shortcode</div>
+  <div class="page-sub">Add the zip checker anywhere on your store.</div>
   <div class="card"><div class="card-head"><h2>🏪 Shopify Theme (Recommended)</h2></div>
     <div style="padding:16px 18px">
       <p style="font-size:14px;color:var(--g700);margin-bottom:8px">Paste in any Liquid file — product page, cart, homepage:</p>
-      <div class="code-block" id="c1"><button class="copy-btn" onclick="cc('c1')">Copy</button>&lt;div data-zipcheck
-  data-label="Check Delivery Availability"
-  data-placeholder="Enter zip / postal code"
-  data-btn-text="Check"&gt;
-&lt;/div&gt;
-&lt;script src="${HOST}/widget.js" async&gt;&lt;/script&gt;</div>
-      <div class="info-box">💡 Widget only appears where you paste this. It will NOT auto-insert anywhere.</div>
+      <div class="code-block" id="c1"><button class="copy-btn" onclick="copyCode('c1')">Copy</button>&lt;div data-zipcheck data-label="Check Delivery" data-placeholder="Enter zip code" data-btn-text="Check"&gt;&lt;/div&gt;
+&lt;script src="${h}/widget.js" async&gt;&lt;/script&gt;</div>
+      <div class="info-box">💡 Widget only appears where you paste this snippet.</div>
     </div>
   </div>
-  <div class="card"><div class="card-head"><h2>🌐 iFrame — Any Website</h2></div>
+  <div class="card"><div class="card-head"><h2>🌐 iFrame Embed</h2></div>
     <div style="padding:16px 18px">
-      <div class="code-block" id="c2"><button class="copy-btn" onclick="cc('c2')">Copy</button>&lt;iframe src="${HOST}/embed" width="100%" height="160" frameborder="0" style="border-radius:10px;border:none"&gt;&lt;/iframe&gt;</div>
-    </div>
-  </div>
-  <div class="card"><div class="card-head"><h2>📝 WordPress Shortcode</h2></div>
-    <div style="padding:16px 18px">
-      <p style="font-size:14px;color:var(--g700);margin-bottom:8px">Add to <code>functions.php</code>, then use <code>[zipcheck]</code> in any page:</p>
-      <div class="code-block" id="c3"><button class="copy-btn" onclick="cc('c3')">Copy</button>function zipcheck_widget() {
-  return '&lt;div data-zipcheck&gt;&lt;/div&gt;&lt;script src="${HOST}/widget.js" async&gt;&lt;/script&gt;';
-}
-add_shortcode('zipcheck', 'zipcheck_widget');</div>
+      <div class="code-block" id="c2"><button class="copy-btn" onclick="copyCode('c2')">Copy</button>&lt;iframe src="${h}/embed" width="100%" height="160" frameborder="0" style="border-radius:10px;border:none"&gt;&lt;/iframe&gt;</div>
     </div>
   </div>
   <div class="card"><div class="card-head"><h2>🔌 REST API</h2></div>
     <div style="padding:16px 18px">
-      <div class="code-block" id="c4"><button class="copy-btn" onclick="cc('c4')">Copy</button>GET ${HOST}/api/check/lookup/{zipcode}
-
-// Allowed: { "data": { "zip":"10001","result":"allow","allowed":true,"message":"..." } }
-// Blocked: { "data": { "zip":"90210","result":"block","allowed":false,"message":"..." } }</div>
+      <div class="code-block" id="c3"><button class="copy-btn" onclick="copyCode('c3')">Copy</button>GET ${h}/api/check/lookup/{zipcode}
+Response: { "success":true, "data": { "zip":"10001","result":"allow","message":"..." } }</div>
     </div>
   </div>
 </div>
+
+<!-- ═══ Analytics Page ═══ -->
 <div class="page" id="page-analytics">
   <div class="page-title">Analytics</div>
   <div class="page-sub">Every zip code check by your customers, in real time.</div>
   <div class="card">
-    <div class="card-head"><h2>📊 Recent Checks</h2><button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">↻ Refresh</button></div>
-    <div id="analytics-body" style="padding:20px"><div class="empty"><div class="empty-icon">📊</div>Loading...</div></div>
+    <div class="card-head"><h2>📊 Recent Checks</h2><button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadAnalytics()">↻ Refresh</button></div>
+    <div id="analytics-body" style="padding:20px"><div class="empty"><div class="empty-icon">📊</div>No data yet.</div></div>
   </div>
 </div>
-</main></div>
+
+</main>
+</div><!-- end shell -->
+
+<!-- ═══ Import Modal (outside shell) ═══ -->
+<div class="modal-overlay" id="imp-modal">
+  <div class="modal-box">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📥</span>
+      <span style="font-size:16px;font-weight:800">Bulk Import Zip Codes</span>
+      <button onclick="closeImport()" style="margin-left:auto;border:none;background:none;font-size:22px;cursor:pointer;color:var(--g500);line-height:1">&times;</button>
+    </div>
+    <div style="padding:20px 22px;overflow-y:auto;flex:1">
+      <div id="imp-step1">
+        <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 1 — Choose File</div>
+        <div id="drop-zone" onclick="document.getElementById('file-inp').click()"
+          style="border:2px dashed var(--g300);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)"
+          ondragover="event.preventDefault();this.style.borderColor='#008060';this.style.background='#e3f1ed'"
+          ondragleave="this.style.borderColor='var(--g300)';this.style.background='var(--g50)'"
+          ondrop="handleDrop(event)">
+          <div style="font-size:36px;margin-bottom:8px">📄</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px">Click to browse or drag &amp; drop</div>
+          <div style="font-size:13px;color:var(--g500)">Supports .csv and .xlsx files up to 10MB</div>
+          <input type="file" id="file-inp" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(this.files[0])"/>
+        </div>
+        <div style="margin-top:12px;font-size:13px;color:var(--g500)">
+          <strong>Required column:</strong> <code>ZipCode</code> &nbsp;
+          <strong>Optional:</strong> <code>Type</code> (allow/deny), <code>Message</code>
+        </div>
+      </div>
+      <div id="imp-step2" style="display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 2 — Preview &amp; Confirm</div>
+        <div id="imp-summary" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"></div>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;font-size:13px">
+          <strong>Import mode:</strong>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="imp-mode" value="merge" checked/> Merge</label>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="imp-mode" value="replace"/> Replace all</label>
+        </div>
+        <div style="max-height:280px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead style="position:sticky;top:0;background:var(--g50)">
+              <tr>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Zip Code</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Type</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Message</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Status</th>
+              </tr>
+            </thead>
+            <tbody id="imp-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+      <button class="btn btn-ghost" id="imp-back-btn" style="display:none" onclick="impBack()">&#8592; Back</button>
+      <button class="btn btn-primary" id="imp-action-btn" onclick="impAction()">Choose File</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
+
 <script>
-const API=window.location.origin;
-let _impRows=[];
+var API = window.location.origin;
+var _impRows = [];
 
-// ── Navigation ────────────────────────────────────────────────────────────────
-function nav(btn,page){document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('page-'+page).classList.add('active');if(page==='rules')loadRules();if(page==='analytics')loadAnalytics();if(page==='settings')loadSettings();}
-
-// ── Rules ─────────────────────────────────────────────────────────────────────
-async function loadRules(){try{const r=await fetch(API+'/api/rules');const j=await r.json();renderRules(j.data||j.rules||(Array.isArray(j)?j:[]));}catch(e){document.getElementById('rules-tbody').innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">⚠️</div>Failed to load</div></td></tr>';}}
-
-function renderRules(rules){
-  document.getElementById('rules-cnt').textContent=rules.length;
-  document.getElementById('s-total').textContent=rules.length;
-  document.getElementById('s-allow').textContent=rules.filter(r=>r.action==='allow'||r.type==='allow').length;
-  document.getElementById('s-deny').textContent=rules.filter(r=>r.action==='deny'||r.action==='block'||r.type==='deny').length;
-  const tbody=document.getElementById('rules-tbody');
-  if(!rules.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>No rules yet. Add your first zip code!</div></td></tr>';return;}
-  tbody.innerHTML=rules.map(r=>{
-    const id=r.id||r._id;
-    const zip=r.zip||r.zipCode||(r.zipCodes&&r.zipCodes.join(', '))||'—';
-    const type=r.action||r.type||'allow';
-    const msg=r.message||r.errorMessage||'—';
-    const ena=r.status==='active'||r.enabled!==false;
-    return '<tr>'
-      +'<td><input type="checkbox" class="row-chk" data-id="'+id+'" onchange="onChk()"/></td>'
-      +'<td class="mono">'+zip+'</td>'
-      +'<td><span class="badge badge-'+type+'">'+(type==='allow'?'✅ Allow':'🚫 Deny')+'</span></td>'
-      +'<td style="color:var(--g500);font-size:13px">'+msg+'</td>'
-      +'<td><label class="toggle"><input type="checkbox" '+(ena?'checked':'')+' onchange="toggleRule(\''+id+'\',this.checked)"/><span class="slider"></span></label></td>'
-      +'<td><button class="btn btn-danger btn-sm" onclick="deleteRule(\''+id+'\')">Delete</button></td>'
-      +'</tr>';
-  }).join('');
+function nav(btn, page) {
+  document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById('page-' + page).classList.add('active');
+  if (page === 'rules') loadRules();
+  if (page === 'analytics') loadAnalytics();
+  if (page === 'settings') loadSettings();
 }
 
-async function addRule(){const zip=document.getElementById('f-zip').value.trim();const type=document.getElementById('f-type').value;const msg=document.getElementById('f-msg').value.trim();if(!zip){toast('Enter a zip / postal code','e');return;}if(zip.length<5){toast('Must be at least 5 characters','e');return;}try{const body={name:zip+' Rule',action:type,status:'active',zipCodes:[zip.toUpperCase()],message:type==='allow'?msg:'',errorMessage:type==='deny'?msg:''};const r=await fetch(API+'/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok){toast(j.message||'Failed','e');return;}document.getElementById('f-zip').value='';document.getElementById('f-msg').value='';toast('✅ Rule added!','s');loadRules();}catch(e){toast('Error: '+e.message,'e');}}
-async function deleteRule(id){if(!confirm('Delete?'))return;await fetch(API+'/api/rules/'+id,{method:'DELETE'});toast('🗑️ Deleted','s');loadRules();}
-async function toggleRule(id){try{await fetch(API+'/api/rules/'+id+'/toggle',{method:'PATCH'});toast('Updated','s');}catch(e){toast('Failed','e');}}
-document.addEventListener('keydown',e=>{if(e.target.id==='f-zip'&&e.key==='Enter')addRule();});
-
-// ── Bulk select / delete ───────────────────────────────────────────────────────
-function onChk(){
-  const checked=[...document.querySelectorAll('.row-chk:checked')];
-  const btn=document.getElementById('bulk-del-btn');
-  const all=document.getElementById('sel-all');
-  const total=document.querySelectorAll('.row-chk').length;
-  btn.style.display=checked.length?'inline-flex':'none';
-  btn.textContent='🗑️ Delete '+checked.length+' selected';
-  all.indeterminate=checked.length>0&&checked.length<total;
-  all.checked=checked.length===total&&total>0;
-}
-function toggleAll(cb){document.querySelectorAll('.row-chk').forEach(el=>el.checked=cb.checked);onChk();}
-async function bulkDelete(){
-  const ids=[...document.querySelectorAll('.row-chk:checked')].map(el=>el.dataset.id);
-  if(!ids.length)return;
-  if(!confirm('Delete '+ids.length+' rules?'))return;
-  await Promise.all(ids.map(id=>fetch(API+'/api/rules/'+id,{method:'DELETE'})));
-  toast('🗑️ '+ids.length+' rules deleted','s');
-  loadRules();
+// ── Rules ──────────────────────────────────────────────────────────────────────
+function loadRules() {
+  fetch(API + '/api/rules')
+    .then(function(r){ return r.json(); })
+    .then(function(j){ renderRules(j.data || j.rules || (Array.isArray(j) ? j : [])); })
+    .catch(function(){ document.getElementById('rules-tbody').innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">⚠️</div>Failed to load rules</div></td></tr>'; });
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
-function exportRules(format){
-  const a=document.createElement('a');
-  a.href=API+'/api/rules/export/download?format='+format;
-  a.download='zipcode-rules.'+format;
+function renderRules(rules) {
+  document.getElementById('rules-cnt').textContent = rules.length;
+  document.getElementById('s-total').textContent   = rules.length;
+  document.getElementById('s-allow').textContent   = rules.filter(function(r){ return r.action==='allow'; }).length;
+  document.getElementById('s-deny').textContent    = rules.filter(function(r){ return r.action==='deny'||r.action==='block'; }).length;
+  var tbody = document.getElementById('rules-tbody');
+  if (!rules.length) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>No rules yet. Add your first zip code!</div></td></tr>';
+    return;
+  }
+  var html = '';
+  rules.forEach(function(r) {
+    var id   = r.id || r._id;
+    var zips = r.zipCodes ? r.zipCodes.join(', ') : (r.zip || r.zipCode || '—');
+    var type = r.action || r.type || 'allow';
+    var msg  = r.message || r.errorMessage || '—';
+    var ena  = r.status === 'active' || r.enabled !== false;
+    var badge = type === 'allow'
+      ? '<span class="badge badge-allow">✅ Allow</span>'
+      : '<span class="badge badge-deny">🚫 Deny</span>';
+    var toggle = '<label class="toggle"><input type="checkbox" ' + (ena ? 'checked' : '') + ' onchange="toggleRule(\'' + id + '\')"/><span class="slider"></span></label>';
+    var del = '<button class="btn btn-danger btn-sm" onclick="deleteRule(\'' + id + '\')">Delete</button>';
+    html += '<tr>'
+      + '<td><input type="checkbox" class="row-chk" data-id="' + id + '" onchange="onChk()"/></td>'
+      + '<td class="mono">' + zips + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td style="color:var(--g500);font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + msg + '</td>'
+      + '<td>' + toggle + '</td>'
+      + '<td>' + del + '</td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function addRule() {
+  var zip  = document.getElementById('f-zip').value.trim();
+  var type = document.getElementById('f-type').value;
+  var msg  = document.getElementById('f-msg').value.trim();
+  if (!zip) { toast('Enter a zip / postal code', 'e'); return; }
+  if (zip.length < 5) { toast('Must be at least 5 characters', 'e'); return; }
+  var body = { name: zip + ' Rule', action: type, status: 'active', zipCodes: [zip.toUpperCase()], message: type === 'allow' ? msg : '', errorMessage: type === 'deny' ? msg : '' };
+  fetch(API + '/api/rules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+    .then(function(res) {
+      if (!res.ok) { toast(res.j.message || 'Failed to add rule', 'e'); return; }
+      document.getElementById('f-zip').value = '';
+      document.getElementById('f-msg').value = '';
+      toast('✅ Rule added!', 's');
+      loadRules();
+    })
+    .catch(function(e){ toast('Error: ' + e.message, 'e'); });
+}
+
+function deleteRule(id) {
+  if (!confirm('Delete this rule?')) return;
+  fetch(API + '/api/rules/' + id, { method: 'DELETE' })
+    .then(function(){ toast('🗑️ Deleted', 's'); loadRules(); })
+    .catch(function(){ toast('Delete failed', 'e'); });
+}
+
+function toggleRule(id) {
+  fetch(API + '/api/rules/' + id + '/toggle', { method: 'PATCH' })
+    .then(function(){ toast('Updated', 's'); })
+    .catch(function(){ toast('Failed', 'e'); });
+}
+
+document.addEventListener('keydown', function(e) { if (e.target.id === 'f-zip' && e.key === 'Enter') addRule(); });
+
+function onChk() {
+  var checked = document.querySelectorAll('.row-chk:checked');
+  var btn = document.getElementById('bulk-del-btn');
+  var selAll = document.getElementById('sel-all');
+  var total = document.querySelectorAll('.row-chk').length;
+  btn.style.display = checked.length ? 'inline-flex' : 'none';
+  btn.textContent = '🗑️ Delete ' + checked.length + ' selected';
+  selAll.indeterminate = checked.length > 0 && checked.length < total;
+  selAll.checked = checked.length === total && total > 0;
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.row-chk').forEach(function(el){ el.checked = cb.checked; });
+  onChk();
+}
+
+function bulkDelete() {
+  var ids = Array.from(document.querySelectorAll('.row-chk:checked')).map(function(el){ return el.dataset.id; });
+  if (!ids.length) return;
+  if (!confirm('Delete ' + ids.length + ' rules?')) return;
+  Promise.all(ids.map(function(id){ return fetch(API + '/api/rules/' + id, { method: 'DELETE' }); }))
+    .then(function(){ toast('🗑️ ' + ids.length + ' rules deleted', 's'); loadRules(); });
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────────
+function exportRules(format) {
+  var a = document.createElement('a');
+  a.href = API + '/api/rules/export/download?format=' + format;
+  a.download = 'zipcode-rules.' + format;
+  document.body.appendChild(a);
   a.click();
-  toast('📥 Downloading '+format.toUpperCase()+'...','s');
+  document.body.removeChild(a);
+  toast('📥 Downloading ' + format.toUpperCase() + '...', 's');
 }
 
-function downloadTemplate(){
-  const csv='ZipCode,Type,Message\n10001,allow,Delivery available!\n90210,deny,We do not deliver here.';
-  const blob=new Blob([csv],{type:'text/csv'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='zipcode-template.csv';
+function downloadTemplate() {
+  var csv = 'ZipCode,Type,Message\n10001,allow,Delivery available!\n90210,deny,We do not deliver to this area.';
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'zipcode-import-template.csv';
+  document.body.appendChild(a);
   a.click();
-  toast('📄 Template downloaded','s');
+  document.body.removeChild(a);
+  toast('📄 Template downloaded', 's');
 }
 
-// ── Import Modal ──────────────────────────────────────────────────────────────
-function closeImport(){
-  document.getElementById('imp-modal').style.display='none';
-  document.getElementById('imp-step1').style.display='block';
-  document.getElementById('imp-step2').style.display='none';
-  document.getElementById('imp-action-btn').textContent='Choose File';
-  document.getElementById('imp-back-btn').style.display='none';
-  document.getElementById('file-inp').value='';
-  _impRows=[];
+// ── Import Modal ───────────────────────────────────────────────────────────────
+function openImport() {
+  document.getElementById('imp-modal').classList.add('open');
 }
-function impBack(){
-  document.getElementById('imp-step1').style.display='block';
-  document.getElementById('imp-step2').style.display='none';
-  document.getElementById('imp-action-btn').textContent='Choose File';
-  document.getElementById('imp-back-btn').style.display='none';
+
+function closeImport() {
+  document.getElementById('imp-modal').classList.remove('open');
+  document.getElementById('imp-step1').style.display = 'block';
+  document.getElementById('imp-step2').style.display = 'none';
+  document.getElementById('imp-action-btn').textContent = 'Choose File';
+  document.getElementById('imp-back-btn').style.display = 'none';
+  document.getElementById('file-inp').value = '';
+  _impRows = [];
 }
-function handleDrop(e){
+
+function impBack() {
+  document.getElementById('imp-step1').style.display = 'block';
+  document.getElementById('imp-step2').style.display = 'none';
+  document.getElementById('imp-action-btn').textContent = 'Choose File';
+  document.getElementById('imp-back-btn').style.display = 'none';
+  _impRows = [];
+}
+
+function handleDrop(e) {
   e.preventDefault();
-  document.getElementById('drop-zone').style.borderColor='var(--g300)';
-  document.getElementById('drop-zone').style.background='var(--g50)';
-  const file=e.dataTransfer.files[0];
-  if(file)handleFileSelect(file);
-}
-async function handleFileSelect(file){
-  if(!file)return;
-  toast('🔍 Parsing file...','');
-  const fd=new FormData();
-  fd.append('file',file);
-  try{
-    const r=await fetch(API+'/api/rules/import/preview',{method:'POST',body:fd});
-    const j=await r.json();
-    if(!j.success){toast(j.message||'Parse failed','e');return;}
-    _impRows=j.data;
-    showPreview(j);
-  }catch(e){toast('Upload failed: '+e.message,'e');}
-}
-function showPreview(j){
-  document.getElementById('imp-step1').style.display='none';
-  document.getElementById('imp-step2').style.display='block';
-  document.getElementById('imp-action-btn').textContent='✅ Import Now';
-  document.getElementById('imp-back-btn').style.display='inline-flex';
-
-  const valid=j.data.filter(r=>r.valid).length;
-  const invalid=j.data.filter(r=>!r.valid).length;
-  const dupes=j.data.filter(r=>r.duplicate).length;
-
-  document.getElementById('imp-summary').innerHTML=
-    '<div style="background:var(--green-lt);color:var(--green-dk);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">✅ '+valid+' valid</div>'
-    +(invalid?'<div style="background:var(--red-lt);color:var(--red);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">⚠️ '+invalid+' invalid</div>':'')
-    +(dupes?'<div style="background:#fff8e1;color:#7c5800;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">🔁 '+dupes+' duplicates</div>':'')
-    +'<div style="background:var(--g100);color:var(--g700);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">📋 '+j.total+' total rows</div>';
-
-  document.getElementById('imp-preview-tbody').innerHTML=j.data.slice(0,200).map(function(r){
-    const rowStyle='border-bottom:1px solid var(--g100);'+(!r.valid?'background:#fff0ee':r.duplicate?'background:#fffde7':'');
-    const status=!r.valid?'<span style="color:var(--red)">⚠ Invalid</span>':r.duplicate?'<span style="color:#7c5800">🔁 Duplicate</span>':'<span style="color:var(--green)">✅ New</span>';
-    return '<tr style="'+rowStyle+'">'
-      +'<td style="padding:7px 12px;font-family:var(--mono);font-size:13px">'+(r.zip||'—')+'</td>'
-      +'<td style="padding:7px 12px"><span class="badge badge-'+r.type+'">'+(r.type==='allow'?'Allow':'Deny')+'</span></td>'
-      +'<td style="padding:7px 12px;font-size:12px;color:var(--g500)">'+(r.message||'—')+'</td>'
-      +'<td style="padding:7px 12px;font-size:12px">'+status+'</td>'
-      +'</tr>';
-  }).join('');
-}
-async function impAction(){
-  if(_impRows.length===0){document.getElementById('file-inp').click();return;}
-  const mode=document.querySelector('input[name="imp-mode"]:checked')?.value||'merge';
-  const validRows=_impRows.filter(r=>r.valid);
-  if(!validRows.length){toast('No valid rows to import','e');return;}
-  try{
-    const r=await fetch(API+'/api/rules/import/commit',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({rows:validRows,mode})
-    });
-    const j=await r.json();
-    if(!j.success){toast(j.message||'Import failed','e');return;}
-    toast('✅ Imported '+j.added+' zip codes!'+(j.skipped?' ('+j.skipped+' skipped)':''),'s');
-    closeImport();
-    loadRules();
-  }catch(e){toast('Import error: '+e.message,'e');}
+  var dz = document.getElementById('drop-zone');
+  dz.style.borderColor = 'var(--g300)';
+  dz.style.background = 'var(--g50)';
+  var file = e.dataTransfer.files[0];
+  if (file) handleFileSelect(file);
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
-function sc(cId,hId){document.getElementById(hId).value=document.getElementById(cId).value;upv();}
-function sh(hId,cId){const v=document.getElementById(hId).value;if(/^#[0-9a-f]{6}$/i.test(v)){document.getElementById(cId).value=v;upv();}}
-function upv(){document.getElementById('pv-btn').style.background=document.getElementById('s-btn-c').value;document.getElementById('pv-btn').style.color=document.getElementById('s-btxt-c').value;document.getElementById('pv-btn').textContent=document.getElementById('s-btn-lbl').value||'Check';document.getElementById('pv-result').style.color=document.getElementById('s-ok-c').value;document.getElementById('pv-input').placeholder=document.getElementById('s-ph').value||'Enter zip code';document.getElementById('pv-title').textContent='📍 '+(document.getElementById('s-title').value||'Check Delivery Availability');}
-async function loadSettings(){try{const r=await fetch(API+'/api/settings');const j=await r.json();const s=j.data||j.settings||j||{};if(s.btnColor){document.getElementById('s-btn-c').value=s.btnColor;document.getElementById('s-btn-ch').value=s.btnColor;}if(s.btnTxt){document.getElementById('s-btxt-c').value=s.btnTxt;document.getElementById('s-btxt-ch').value=s.btnTxt;}if(s.okColor){document.getElementById('s-ok-c').value=s.okColor;document.getElementById('s-ok-ch').value=s.okColor;}if(s.errColor){document.getElementById('s-err-c').value=s.errColor;document.getElementById('s-err-ch').value=s.errColor;}upv();}catch(e){}}
-async function saveSettings(){const s={btnColor:document.getElementById('s-btn-c').value,btnTxt:document.getElementById('s-btxt-c').value,okColor:document.getElementById('s-ok-c').value,errColor:document.getElementById('s-err-c').value,widgetLabel:document.getElementById('s-title').value,widgetPlaceholder:document.getElementById('s-ph').value,okMsg:document.getElementById('s-ok-msg').value,errMsg:document.getElementById('s-err-msg').value};try{await fetch(API+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});toast('💾 Saved!','s');}catch(e){toast('Failed','e');}}
+function handleFileSelect(file) {
+  if (!file) return;
+  toast('🔍 Parsing file...', '');
+  var fd = new FormData();
+  fd.append('file', file);
+  fetch(API + '/api/rules/import/preview', { method: 'POST', body: fd })
+    .then(function(r){ return r.json(); })
+    .then(function(j) {
+      if (!j.success) { toast(j.message || 'Parse failed', 'e'); return; }
+      _impRows = j.data;
+      showPreview(j);
+    })
+    .catch(function(e){ toast('Upload failed: ' + e.message, 'e'); });
+}
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
-async function loadAnalytics(){const el=document.getElementById('analytics-body');try{const r=await fetch(API+'/api/analytics/recent?limit=50');const j=await r.json();const rows=j.data||[];if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>';return;}el.innerHTML='<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td class="mono">'+r.zip+'</td><td><span class="badge badge-'+r.result+'">'+r.result+'</span></td><td style="color:var(--g500);font-size:13px">'+(r.ruleName||'—')+'</td><td style="color:var(--g500);font-size:12px">'+new Date(r.timestamp).toLocaleString()+'</td></tr>';}).join('')+'</tbody></table>';}catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>';}}
+function showPreview(j) {
+  document.getElementById('imp-step1').style.display = 'none';
+  document.getElementById('imp-step2').style.display = 'block';
+  document.getElementById('imp-action-btn').textContent = '✅ Import Now';
+  document.getElementById('imp-back-btn').style.display = 'inline-flex';
+  var valid   = j.data.filter(function(r){ return r.valid; }).length;
+  var invalid = j.data.filter(function(r){ return !r.valid; }).length;
+  var dupes   = j.data.filter(function(r){ return r.duplicate; }).length;
+  document.getElementById('imp-summary').innerHTML =
+    '<span style="background:var(--green-lt);color:var(--green-dk);padding:6px 12px;border-radius:8px;font-size:13px;font-weight:700">✅ ' + valid + ' valid</span>'
+    + (invalid ? '<span style="background:var(--red-lt);color:var(--red);padding:6px 12px;border-radius:8px;font-size:13px;font-weight:700">⚠️ ' + invalid + ' invalid</span>' : '')
+    + (dupes ? '<span style="background:#fff8e1;color:#7c5800;padding:6px 12px;border-radius:8px;font-size:13px;font-weight:700">🔁 ' + dupes + ' duplicates</span>' : '')
+    + '<span style="background:var(--g100);color:var(--g700);padding:6px 12px;border-radius:8px;font-size:13px;font-weight:700">📋 ' + j.total + ' total</span>';
+  var html = '';
+  j.data.slice(0, 200).forEach(function(r) {
+    var bg = !r.valid ? 'background:#fff0ee' : r.duplicate ? 'background:#fffde7' : '';
+    var status = !r.valid ? '<span style="color:var(--red)">⚠ Invalid</span>'
+      : r.duplicate ? '<span style="color:#7c5800">🔁 Duplicate</span>'
+      : '<span style="color:var(--green)">✅ New</span>';
+    html += '<tr style="border-bottom:1px solid var(--g100);' + bg + '">'
+      + '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:13px">' + (r.zip || '—') + '</td>'
+      + '<td style="padding:7px 12px"><span class="badge badge-' + r.type + '">' + r.type + '</span></td>'
+      + '<td style="padding:7px 12px;font-size:12px;color:var(--g500)">' + (r.message || '—') + '</td>'
+      + '<td style="padding:7px 12px;font-size:12px">' + status + '</td>'
+      + '</tr>';
+  });
+  document.getElementById('imp-preview-tbody').innerHTML = html;
+}
 
-// ── Embed copy ────────────────────────────────────────────────────────────────
-function cc(id){const el=document.getElementById(id);const t=el.innerText.replace(/^Copy/,'').trim();navigator.clipboard.writeText(t).then(()=>toast('📋 Copied!','s'));}
+function impAction() {
+  if (_impRows.length === 0) { document.getElementById('file-inp').click(); return; }
+  var mode = document.querySelector('input[name="imp-mode"]:checked') ? document.querySelector('input[name="imp-mode"]:checked').value : 'merge';
+  var validRows = _impRows.filter(function(r){ return r.valid; });
+  if (!validRows.length) { toast('No valid rows to import', 'e'); return; }
+  fetch(API + '/api/rules/import/commit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows: validRows, mode: mode })
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(j) {
+      if (!j.success) { toast(j.message || 'Import failed', 'e'); return; }
+      toast('✅ Imported ' + j.added + ' zip codes!' + (j.skipped ? ' (' + j.skipped + ' skipped)' : ''), 's');
+      closeImport();
+      loadRules();
+    })
+    .catch(function(e){ toast('Import error: ' + e.message, 'e'); });
+}
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='on '+(type||'');setTimeout(()=>t.className='',2800);}
+// ── Settings ───────────────────────────────────────────────────────────────────
+function sc(cId, hId) { document.getElementById(hId).value = document.getElementById(cId).value; upv(); }
+function sh(hId, cId) { var v = document.getElementById(hId).value; if (/^#[0-9a-f]{6}$/i.test(v)) { document.getElementById(cId).value = v; upv(); } }
+function upv() {
+  document.getElementById('pv-btn').style.background = document.getElementById('s-btn-c').value;
+  document.getElementById('pv-btn').style.color = document.getElementById('s-btxt-c').value;
+  document.getElementById('pv-btn').textContent = document.getElementById('s-btn-lbl').value || 'Check';
+  document.getElementById('pv-result').style.color = document.getElementById('s-ok-c').value;
+  document.getElementById('pv-input').placeholder = document.getElementById('s-ph').value || 'Enter zip code';
+  document.getElementById('pv-title').textContent = '📍 ' + (document.getElementById('s-title').value || 'Check Delivery Availability');
+}
 
-loadRules();upv();
-</script></body></html>`;
+function loadSettings() {
+  fetch(API + '/api/settings')
+    .then(function(r){ return r.json(); })
+    .then(function(j) {
+      var s = j.data || j.settings || j || {};
+      if (s.btnColor) { document.getElementById('s-btn-c').value = s.btnColor; document.getElementById('s-btn-ch').value = s.btnColor; }
+      if (s.btnTxt)   { document.getElementById('s-btxt-c').value = s.btnTxt; document.getElementById('s-btxt-ch').value = s.btnTxt; }
+      if (s.okColor)  { document.getElementById('s-ok-c').value = s.okColor; document.getElementById('s-ok-ch').value = s.okColor; }
+      if (s.errColor) { document.getElementById('s-err-c').value = s.errColor; document.getElementById('s-err-ch').value = s.errColor; }
+      upv();
+    }).catch(function(){});
+}
+
+function saveSettings() {
+  var s = {
+    btnColor: document.getElementById('s-btn-c').value,
+    btnTxt:   document.getElementById('s-btxt-c').value,
+    okColor:  document.getElementById('s-ok-c').value,
+    errColor: document.getElementById('s-err-c').value,
+    widgetLabel:       document.getElementById('s-title').value,
+    widgetPlaceholder: document.getElementById('s-ph').value,
+    okMsg:    document.getElementById('s-ok-msg').value,
+    errMsg:   document.getElementById('s-err-msg').value
+  };
+  fetch(API + '/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) })
+    .then(function(){ toast('💾 Saved!', 's'); })
+    .catch(function(){ toast('Save failed', 'e'); });
+}
+
+// ── Analytics ──────────────────────────────────────────────────────────────────
+function loadAnalytics() {
+  var el = document.getElementById('analytics-body');
+  el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading...</div>';
+  fetch(API + '/api/analytics/recent?limit=50')
+    .then(function(r){ return r.json(); })
+    .then(function(j) {
+      var rows = j.data || [];
+      if (!rows.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>'; return; }
+      var html = '<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>';
+      rows.forEach(function(r) {
+        html += '<tr>'
+          + '<td class="mono">' + r.zip + '</td>'
+          + '<td><span class="badge badge-' + r.result + '">' + r.result + '</span></td>'
+          + '<td style="color:var(--g500);font-size:13px">' + (r.ruleName || '—') + '</td>'
+          + '<td style="color:var(--g500);font-size:12px">' + new Date(r.timestamp).toLocaleString() + '</td>'
+          + '</tr>';
+      });
+      el.innerHTML = html + '</tbody></table>';
+    })
+    .catch(function(){ el.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>'; });
+}
+
+// ── Copy code blocks ───────────────────────────────────────────────────────────
+function copyCode(id) {
+  var el = document.getElementById(id);
+  var t = el.innerText.replace(/^Copy/, '').trim();
+  navigator.clipboard.writeText(t).then(function(){ toast('📋 Copied!', 's'); });
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'on ' + (type || '');
+  setTimeout(function(){ t.className = ''; }, 2800);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+loadRules();
+upv();
+</script>
+</body>
+</html>`;
 }
