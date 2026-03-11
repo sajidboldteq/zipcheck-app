@@ -447,14 +447,14 @@ function renderRules(rules){
     const type=r.action||r.type||'allow';
     const msg=r.message||r.errorMessage||'—';
     const ena=r.status==='active'||r.enabled!==false;
-    return `<tr>
-      <td><input type="checkbox" class="row-chk" data-id="${id}" onchange="onChk()"/></td>
-      <td class="mono">${zip}</td>
-      <td><span class="badge badge-${type}">${type==='allow'?'✅ Allow':'🚫 Deny'}</span></td>
-      <td style="color:var(--g500);font-size:13px">${msg}</td>
-      <td><label class="toggle"><input type="checkbox" ${ena?'checked':''} onchange="toggleRule('${id}',this.checked)"/><span class="slider"></span></label></td>
-      <td><button class="btn btn-danger btn-sm" onclick="deleteRule('${id}')">Delete</button></td>
-    </tr>`;
+    return '<tr>'
+      +'<td><input type="checkbox" class="row-chk" data-id="'+id+'" onchange="onChk()"/></td>'
+      +'<td class="mono">'+zip+'</td>'
+      +'<td><span class="badge badge-'+type+'">'+(type==='allow'?'✅ Allow':'🚫 Deny')+'</span></td>'
+      +'<td style="color:var(--g500);font-size:13px">'+msg+'</td>'
+      +'<td><label class="toggle"><input type="checkbox" '+(ena?'checked':'')+' onchange="toggleRule(\''+id+'\',this.checked)"/><span class="slider"></span></label></td>'
+      +'<td><button class="btn btn-danger btn-sm" onclick="deleteRule(\''+id+'\')">Delete</button></td>'
+      +'</tr>';
   }).join('');
 }
 
@@ -470,7 +470,7 @@ function onChk(){
   const all=document.getElementById('sel-all');
   const total=document.querySelectorAll('.row-chk').length;
   btn.style.display=checked.length?'inline-flex':'none';
-  btn.textContent=`🗑️ Delete ${checked.length} selected`;
+  btn.textContent='🗑️ Delete '+checked.length+' selected';
   all.indeterminate=checked.length>0&&checked.length<total;
   all.checked=checked.length===total&&total>0;
 }
@@ -478,9 +478,9 @@ function toggleAll(cb){document.querySelectorAll('.row-chk').forEach(el=>el.chec
 async function bulkDelete(){
   const ids=[...document.querySelectorAll('.row-chk:checked')].map(el=>el.dataset.id);
   if(!ids.length)return;
-  if(!confirm(`Delete ${ids.length} rules?`))return;
+  if(!confirm('Delete '+ids.length+' rules?'))return;
   await Promise.all(ids.map(id=>fetch(API+'/api/rules/'+id,{method:'DELETE'})));
-  toast(`🗑️ ${ids.length} rules deleted`,'s');
+  toast('🗑️ '+ids.length+' rules deleted','s');
   loadRules();
 }
 
@@ -549,23 +549,22 @@ function showPreview(j){
   const invalid=j.data.filter(r=>!r.valid).length;
   const dupes=j.data.filter(r=>r.duplicate).length;
 
-  document.getElementById('imp-summary').innerHTML=`
-    <div style="background:var(--green-lt);color:var(--green-dk);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">✅ ${valid} valid</div>
-    ${invalid?`<div style="background:var(--red-lt);color:var(--red);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">⚠️ ${invalid} invalid</div>`:''}
-    ${dupes?`<div style="background:#fff8e1;color:#7c5800;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">🔁 ${dupes} duplicates</div>`:''}
-    <div style="background:var(--g100);color:var(--g700);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">📋 ${j.total} total rows</div>
-  `;
+  document.getElementById('imp-summary').innerHTML=
+    '<div style="background:var(--green-lt);color:var(--green-dk);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">✅ '+valid+' valid</div>'
+    +(invalid?'<div style="background:var(--red-lt);color:var(--red);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">⚠️ '+invalid+' invalid</div>':'')
+    +(dupes?'<div style="background:#fff8e1;color:#7c5800;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">🔁 '+dupes+' duplicates</div>':'')
+    +'<div style="background:var(--g100);color:var(--g700);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">📋 '+j.total+' total rows</div>';
 
-  document.getElementById('imp-preview-tbody').innerHTML=j.data.slice(0,200).map(r=>`
-    <tr style="border-bottom:1px solid var(--g100);${!r.valid?'background:#fff0ee':''}${r.duplicate?'background:#fffde7':''}">
-      <td style="padding:7px 12px;font-family:var(--mono);font-size:13px">${r.zip||'—'}</td>
-      <td style="padding:7px 12px"><span class="badge badge-${r.type}">${r.type==='allow'?'Allow':'Deny'}</span></td>
-      <td style="padding:7px 12px;font-size:12px;color:var(--g500)">${r.message||'—'}</td>
-      <td style="padding:7px 12px;font-size:12px">
-        ${!r.valid?'<span style="color:var(--red)">⚠ Invalid</span>':r.duplicate?'<span style="color:#7c5800">🔁 Duplicate</span>':'<span style="color:var(--green)">✅ New</span>'}
-      </td>
-    </tr>
-  `).join('');
+  document.getElementById('imp-preview-tbody').innerHTML=j.data.slice(0,200).map(function(r){
+    const rowStyle='border-bottom:1px solid var(--g100);'+(!r.valid?'background:#fff0ee':r.duplicate?'background:#fffde7':'');
+    const status=!r.valid?'<span style="color:var(--red)">⚠ Invalid</span>':r.duplicate?'<span style="color:#7c5800">🔁 Duplicate</span>':'<span style="color:var(--green)">✅ New</span>';
+    return '<tr style="'+rowStyle+'">'
+      +'<td style="padding:7px 12px;font-family:var(--mono);font-size:13px">'+(r.zip||'—')+'</td>'
+      +'<td style="padding:7px 12px"><span class="badge badge-'+r.type+'">'+(r.type==='allow'?'Allow':'Deny')+'</span></td>'
+      +'<td style="padding:7px 12px;font-size:12px;color:var(--g500)">'+(r.message||'—')+'</td>'
+      +'<td style="padding:7px 12px;font-size:12px">'+status+'</td>'
+      +'</tr>';
+  }).join('');
 }
 async function impAction(){
   if(_impRows.length===0){document.getElementById('file-inp').click();return;}
@@ -579,7 +578,7 @@ async function impAction(){
     });
     const j=await r.json();
     if(!j.success){toast(j.message||'Import failed','e');return;}
-    toast(`✅ Imported ${j.added} zip codes!`+(j.skipped?` (${j.skipped} skipped)`:''),'s');
+    toast('✅ Imported '+j.added+' zip codes!'+(j.skipped?' ('+j.skipped+' skipped)':''),'s');
     closeImport();
     loadRules();
   }catch(e){toast('Import error: '+e.message,'e');}
@@ -593,7 +592,7 @@ async function loadSettings(){try{const r=await fetch(API+'/api/settings');const
 async function saveSettings(){const s={btnColor:document.getElementById('s-btn-c').value,btnTxt:document.getElementById('s-btxt-c').value,okColor:document.getElementById('s-ok-c').value,errColor:document.getElementById('s-err-c').value,widgetLabel:document.getElementById('s-title').value,widgetPlaceholder:document.getElementById('s-ph').value,okMsg:document.getElementById('s-ok-msg').value,errMsg:document.getElementById('s-err-msg').value};try{await fetch(API+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});toast('💾 Saved!','s');}catch(e){toast('Failed','e');}}
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
-async function loadAnalytics(){const el=document.getElementById('analytics-body');try{const r=await fetch(API+'/api/analytics/recent?limit=50');const j=await r.json();const rows=j.data||[];if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>';return;}el.innerHTML='<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>'+rows.map(r=>`<tr><td class="mono">${r.zip}</td><td><span class="badge badge-${r.result}">${r.result}</span></td><td style="color:var(--g500);font-size:13px">${r.ruleName||'—'}</td><td style="color:var(--g500);font-size:12px">${new Date(r.timestamp).toLocaleString()}</td></tr>`).join('')+'</tbody></table>';}catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>';}}
+async function loadAnalytics(){const el=document.getElementById('analytics-body');try{const r=await fetch(API+'/api/analytics/recent?limit=50');const j=await r.json();const rows=j.data||[];if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>';return;}el.innerHTML='<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td class="mono">'+r.zip+'</td><td><span class="badge badge-'+r.result+'">'+r.result+'</span></td><td style="color:var(--g500);font-size:13px">'+(r.ruleName||'—')+'</td><td style="color:var(--g500);font-size:12px">'+new Date(r.timestamp).toLocaleString()+'</td></tr>';}).join('')+'</tbody></table>';}catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>';}}
 
 // ── Embed copy ────────────────────────────────────────────────────────────────
 function cc(id){const el=document.getElementById(id);const t=el.innerText.replace(/^Copy/,'').trim();navigator.clipboard.writeText(t).then(()=>toast('📋 Copied!','s'));}
