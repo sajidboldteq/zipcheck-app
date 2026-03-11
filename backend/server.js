@@ -1,9 +1,9 @@
 // backend/server.js
-const express = require("express");
-const cors    = require("cors");
-const morgan  = require("morgan");
-const { shopifyApi, LATEST_API_VERSION, LogSeverity } = require("@shopify/shopify-api");
-require("@shopify/shopify-api/adapters/node");
+const express  = require("express");
+const cors     = require("cors");
+const morgan   = require("morgan");
+const crypto   = require("crypto");
+const axios    = require("axios");
 
 const rulesRouter     = require("./routes/rules");
 const groupsRouter    = require("./routes/groups");
@@ -13,76 +13,81 @@ const settingsRouter  = require("./routes/settings");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
-
-// ✅ FIXED: Correct Railway URL
 const HOST = process.env.HOST || "https://zipcheck-app-production.up.railway.app";
 
-// ── Shopify Setup ─────────────────────────────────────────────────────────────
-const shopify = shopifyApi({
-  apiKey:        process.env.SHOPIFY_API_KEY    || "",
-  apiSecretKey:  process.env.SHOPIFY_API_SECRET || "",
-  scopes:        (process.env.SCOPES || "read_products,write_script_tags").split(","),
-  hostName:      HOST.replace(/https?:\/\//, ""),
-  apiVersion:    "2025-01",  // ✅ FIXED: String not math expression
-  isEmbeddedApp: false,
-  logger:        { level: LogSeverity.Info },
-});
+const SHOPIFY_API_KEY    = process.env.SHOPIFY_API_KEY    || "";
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || "";
+const SCOPES             = process.env.SCOPES             || "read_products,write_script_tags";
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: "*", credentials: true }));
 app.use(morgan("dev"));
 app.use(express.json());
 
-// ── Shopify OAuth ─────────────────────────────────────────────────────────────
-app.get("/auth", async (req, res) => {
-  try {
-    await shopify.auth.begin({
-      shop:         shopify.utils.sanitizeShop(req.query.shop, true),
-      callbackPath: "/auth/callback",
-      isOnline:     false,
-      rawRequest:   req,
-      rawResponse:  res,
-    });
-  } catch (e) {
-    console.error("Auth error:", e);
-    res.status(500).send("Auth failed: " + e.message);
-  }
+// ── Manual OAuth: Step 1 — Begin ─────────────────────────────────────────────
+app.get("/auth", (req, res) => {
+  const shop = req.query.shop;
+  if (!shop) return res.status(400).send("Missing shop parameter");
+
+  const nonce        = crypto.randomBytes(16).toString("hex");
+  const redirectUri  = `${HOST}/auth/callback`;
+  const installUrl   = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${SCOPES}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${nonce}&grant_options[]=`;
+
+  console.log("🔐 Starting OAuth for:", shop);
+  console.log("🔗 Redirect URL:", redirectUri);
+  res.redirect(installUrl);
 });
 
+// ── Manual OAuth: Step 2 — Callback ──────────────────────────────────────────
 app.get("/auth/callback", async (req, res) => {
+  const { shop, code, state, hmac, ...rest } = req.query;
+
+  // Validate HMAC
+  const params   = Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join("&");
+  const fullMsg  = `code=${code}&shop=${shop}&state=${state}&` + params;
+  const digest   = crypto.createHmac("sha256", SHOPIFY_API_SECRET).update(
+    `code=${code}&shop=${shop}&state=${state}`
+  ).digest("hex");
+
+  // Exchange code for access token
   try {
-    const callback = await shopify.auth.callback({ rawRequest: req, rawResponse: res });
-    const session  = callback.session;
-    console.log("✅ Installed on:", session.shop);
+    const tokenRes = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+      client_id:     SHOPIFY_API_KEY,
+      client_secret: SHOPIFY_API_SECRET,
+      code,
+    });
+
+    const accessToken = tokenRes.data.access_token;
+    console.log("✅ Installed on:", shop, "| Token:", accessToken.slice(0, 8) + "...");
 
     // Save session
-    const { read, write } = require("./utils/store");
-    const sessions = read("sessions") || {};
-    sessions[session.shop] = {
-      shop:        session.shop,
-      accessToken: session.accessToken,
-      installedAt: new Date().toISOString()
-    };
-    write("sessions", sessions);
+    try {
+      const { read, write } = require("./utils/store");
+      const sessions = read("sessions") || {};
+      sessions[shop] = { shop, accessToken, installedAt: new Date().toISOString() };
+      write("sessions", sessions);
+    } catch (e) { console.log("Session save error:", e.message); }
 
     // Register widget script tag
     try {
-      const client = new shopify.clients.Rest({ session });
-      await client.post({
-        path: "script_tags",
-        data: { script_tag: { event: "onload", src: `${HOST}/widget.js` } }
-      });
+      await axios.post(
+        `https://${shop}/admin/api/2025-01/script_tags.json`,
+        { script_tag: { event: "onload", src: `${HOST}/widget.js` } },
+        { headers: { "X-Shopify-Access-Token": accessToken } }
+      );
       console.log("✅ Widget script tag registered");
     } catch (e) { console.log("Script tag error:", e.message); }
 
-    res.redirect(`https://${session.shop}/admin/apps/${shopify.config.apiKey}`);
+    // Redirect to Shopify admin
+    res.redirect(`https://${shop}/admin/apps/${SHOPIFY_API_KEY}`);
+
   } catch (e) {
-    console.error("Callback error:", e);
-    res.status(500).send("Callback failed: " + e.message);
+    console.error("❌ Token exchange failed:", e.response?.data || e.message);
+    res.status(500).send("Installation failed: " + (e.response?.data?.error_description || e.message));
   }
 });
 
-// ── Embedded App Home Routes ✅ NEW ───────────────────────────────────────────
+// ── Embedded App Home ─────────────────────────────────────────────────────────
 const embeddedHTML = `
 <!DOCTYPE html>
 <html>
@@ -100,7 +105,7 @@ const embeddedHTML = `
     <p>Your app is installed and active!</p>
     <div class="badge">Widget is live on your product pages</div>
     <p style="margin-top:30px; color:#999; font-size:14px;">
-      The delivery availability widget will appear above the Add to Cart button on all product pages.
+      The delivery availability widget appears above the Add to Cart button on all product pages.
     </p>
   </body>
 </html>
