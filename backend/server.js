@@ -464,18 +464,22 @@ function renderRules(rules) {
     var badge = type === 'allow'
       ? '<span class="badge badge-allow">✅ Allow</span>'
       : '<span class="badge badge-deny">🚫 Deny</span>';
-    var toggle = '<label class="toggle"><input type="checkbox" ' + (ena ? 'checked' : '') + ' onchange="toggleRule(\'' + id + '\')"/><span class="slider"></span></label>';
-    var del = '<button class="btn btn-danger btn-sm" onclick="deleteRule(\'' + id + '\')">Delete</button>';
+    var chk   = '<input type="checkbox" class="row-chk" data-id="' + id + '"/>';
+    var tog   = '<label class="toggle"><input type="checkbox" class="rule-tog" data-rid="' + id + '" ' + (ena ? 'checked' : '') + '/><span class="slider"></span></label>';
+    var del   = '<button class="btn btn-danger btn-sm rule-del" data-rid="' + id + '">Delete</button>';
     html += '<tr>'
-      + '<td><input type="checkbox" class="row-chk" data-id="' + id + '" onchange="onChk()"/></td>'
+      + '<td>' + chk + '</td>'
       + '<td class="mono">' + zips + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="color:var(--g500);font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + msg + '</td>'
-      + '<td>' + toggle + '</td>'
+      + '<td>' + tog + '</td>'
       + '<td>' + del + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;
+  tbody.querySelectorAll('.row-chk').forEach(function(el){ el.addEventListener('change', onChk); });
+  tbody.querySelectorAll('.rule-tog').forEach(function(el){ el.addEventListener('change', function(){ toggleRule(this.dataset.rid); }); });
+  tbody.querySelectorAll('.rule-del').forEach(function(el){ el.addEventListener('click', function(){ deleteRule(this.dataset.rid); }); });
 }
 
 function addRule() {
@@ -626,7 +630,7 @@ function showPreview(j) {
       : r.duplicate ? '<span style="color:#7c5800">🔁 Duplicate</span>'
       : '<span style="color:var(--green)">✅ New</span>';
     html += '<tr style="border-bottom:1px solid var(--g100);' + bg + '">'
-      + '<td style="padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:13px">' + (r.zip || '—') + '</td>'
+      + '<td style="padding:7px 12px;font-family:monospace;font-size:13px">' + (r.zip || '—') + '</td>'
       + '<td style="padding:7px 12px"><span class="badge badge-' + r.type + '">' + r.type + '</span></td>'
       + '<td style="padding:7px 12px;font-size:12px;color:var(--g500)">' + (r.message || '—') + '</td>'
       + '<td style="padding:7px 12px;font-size:12px">' + status + '</td>'
