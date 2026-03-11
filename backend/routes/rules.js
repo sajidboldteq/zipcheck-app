@@ -39,9 +39,9 @@ router.post("/", (req, res) => {
     return res.status(400).json({ success: false, message: "name, action, and zipCodes are required" });
   }
 
-  // Validate zip codes
-  const invalid = zipCodes.find(z => !/^\d{5}(-\d{4})?$/.test(z));
-  if (invalid) return res.status(400).json({ success: false, message: `Invalid zip code: ${invalid}` });
+  // Validate zip codes — support 5-digit US, 6-char Indian/Canadian postal codes
+  const invalid = zipCodes.find(z => String(z).trim().length < 5 || String(z).trim().length > 7);
+  if (invalid) return res.status(400).json({ success: false, message: `Invalid zip/postal code: ${invalid}` });
 
   const newRule = {
     id: "rule_" + uuidv4().slice(0, 8),
@@ -70,8 +70,8 @@ router.put("/:id", (req, res) => {
 
   // Validate zip codes if provided
   if (req.body.zipCodes) {
-    const invalid = req.body.zipCodes.find(z => !/^\d{5}(-\d{4})?$/.test(z));
-    if (invalid) return res.status(400).json({ success: false, message: `Invalid zip code: ${invalid}` });
+    const invalid = req.body.zipCodes.find(z => String(z).trim().length < 5 || String(z).trim().length > 7);
+    if (invalid) return res.status(400).json({ success: false, message: `Invalid zip/postal code: ${invalid}` });
   }
 
   rules[idx] = { ...rules[idx], ...req.body, id: rules[idx].id, updatedAt: new Date().toISOString() };

@@ -38,9 +38,10 @@ router.post("/", (req, res) => {
 
   if (!zip) return res.status(400).json({ success: false, message: "zip is required" });
 
-  const cleanZip = String(zip).trim();
-  if (!/^\d{5}(-\d{4})?$/.test(cleanZip)) {
-    return res.status(400).json({ success: false, message: "Invalid zip code format" });
+  const cleanZip = String(zip).trim().toUpperCase();
+  // Support US 5-digit, US ZIP+4, Canadian/Indian 6-char postal codes
+  if (cleanZip.length < 5 || cleanZip.length > 7) {
+    return res.status(400).json({ success: false, message: "Invalid zip / postal code format" });
   }
 
   const rules = read("rules") || [];
@@ -72,9 +73,9 @@ router.post("/", (req, res) => {
 
 // GET /api/check/lookup/:zip — quick GET version for widgets
 router.get("/lookup/:zip", (req, res) => {
-  const cleanZip = String(req.params.zip).trim();
-  if (!/^\d{5}(-\d{4})?$/.test(cleanZip)) {
-    return res.status(400).json({ success: false, message: "Invalid zip code format" });
+  const cleanZip = String(req.params.zip).trim().toUpperCase();
+  if (cleanZip.length < 5 || cleanZip.length > 7) {
+    return res.status(400).json({ success: false, message: "Invalid zip / postal code format" });
   }
 
   const rules = read("rules") || [];
