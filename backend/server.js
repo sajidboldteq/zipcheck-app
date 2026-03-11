@@ -242,12 +242,107 @@ td{padding:10px 14px;font-size:14px}td.mono{font-family:var(--mono);font-weight:
       <div class="fld" style="flex:0;min-width:auto;justify-content:flex-end"><label>&nbsp;</label><button class="btn btn-primary" onclick="addRule()">Add Rule</button></div>
     </div>
   </div>
+  <!-- Import / Export Card -->
   <div class="card">
-    <div class="card-head"><h2>📋 All Rules</h2><span class="cnt" id="rules-cnt">0</span></div>
+    <div class="card-head"><h2>📂 Import &amp; Export</h2></div>
+    <div style="padding:16px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-bottom:1px solid var(--g100)">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--g700);margin-bottom:6px">📤 Export all zip codes</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="exportRules('csv')">⬇️ CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportRules('xlsx')">⬇️ Excel (.xlsx)</button>
+        </div>
+      </div>
+      <div style="width:1px;height:40px;background:var(--g200);margin:0 6px"></div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--g700);margin-bottom:6px">📥 Bulk import from file</div>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('imp-modal').style.display='flex'">⬆️ Upload CSV / Excel</button>
+      </div>
+      <div style="margin-left:auto">
+        <a href="#" style="font-size:12px;color:var(--g500);text-decoration:none" onclick="downloadTemplate()">⬇️ Download template</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- All Rules Table -->
+  <div class="card">
+    <div class="card-head">
+      <h2>📋 All Rules</h2><span class="cnt" id="rules-cnt">0</span>
+      <button class="btn btn-danger btn-sm" id="bulk-del-btn" style="display:none;margin-left:auto" onclick="bulkDelete()">🗑️ Delete Selected</button>
+    </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Zip / Postal Code</th><th>Type</th><th>Message</th><th>Enabled</th><th>Delete</th></tr></thead>
-      <tbody id="rules-tbody"><tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div>Loading...</div></td></tr></tbody>
+      <thead><tr>
+        <th><input type="checkbox" id="sel-all" onchange="toggleAll(this)"/></th>
+        <th>Zip / Postal Code</th><th>Type</th><th>Message</th><th>Enabled</th><th>Delete</th>
+      </tr></thead>
+      <tbody id="rules-tbody"><tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div>Loading...</div></td></tr></tbody>
     </table></div>
+  </div>
+</div>
+
+<!-- ── Import Modal ─────────────────────────────────────────────────────────── -->
+<div id="imp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(700px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📥</span>
+      <span style="font-size:16px;font-weight:800">Bulk Import Zip Codes</span>
+      <button onclick="closeImport()" style="margin-left:auto;border:none;background:none;font-size:20px;cursor:pointer;color:var(--g500)">✕</button>
+    </div>
+    <div style="padding:20px 22px;overflow-y:auto;flex:1">
+
+      <!-- Step 1: Upload -->
+      <div id="imp-step1">
+        <div style="font-size:13px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 1 — Choose File</div>
+        <div id="drop-zone" onclick="document.getElementById('file-inp').click()"
+          style="border:2px dashed var(--g300);border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)"
+          ondragover="event.preventDefault();this.style.borderColor='var(--green)';this.style.background='var(--green-lt)'"
+          ondragleave="this.style.borderColor='var(--g300)';this.style.background='var(--g50)'"
+          ondrop="handleDrop(event)">
+          <div style="font-size:36px;margin-bottom:8px">📄</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px">Click to browse or drag & drop</div>
+          <div style="font-size:13px;color:var(--g500)">Supports .csv and .xlsx files up to 10MB</div>
+          <input type="file" id="file-inp" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(this.files[0])"/>
+        </div>
+        <div style="margin-top:12px;font-size:13px;color:var(--g500)">
+          <strong>Required column:</strong> <code>ZipCode</code> &nbsp;&nbsp;
+          <strong>Optional:</strong> <code>Type</code> (allow/deny), <code>Message</code>
+        </div>
+      </div>
+
+      <!-- Step 2: Preview -->
+      <div id="imp-step2" style="display:none">
+        <div style="font-size:13px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Step 2 — Preview &amp; Confirm</div>
+        <div id="imp-summary" style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap"></div>
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
+          <span style="font-size:13px;font-weight:600">Import mode:</span>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+            <input type="radio" name="imp-mode" value="merge" checked/> Merge (keep existing)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+            <input type="radio" name="imp-mode" value="replace"/> Replace all
+          </label>
+        </div>
+        <div style="max-height:300px;overflow-y:auto;border:1px solid var(--g200);border-radius:8px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead style="position:sticky;top:0;background:var(--g50)">
+              <tr>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Zip Code</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Type</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Message</th>
+                <th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--g500);text-align:left">Status</th>
+              </tr>
+            </thead>
+            <tbody id="imp-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+      <button class="btn btn-ghost" id="imp-back-btn" style="display:none" onclick="impBack()">← Back</button>
+      <button class="btn btn-primary" id="imp-action-btn" onclick="impAction()">Choose File</button>
+    </div>
   </div>
 </div>
 <div class="page" id="page-settings">
@@ -331,21 +426,181 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div>
 <div id="toast"></div>
 <script>
 const API=window.location.origin;
+let _impRows=[];
+
+// ── Navigation ────────────────────────────────────────────────────────────────
 function nav(btn,page){document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('page-'+page).classList.add('active');if(page==='rules')loadRules();if(page==='analytics')loadAnalytics();if(page==='settings')loadSettings();}
-async function loadRules(){try{const r=await fetch(API+'/api/rules');const j=await r.json();renderRules(j.data||j.rules||(Array.isArray(j)?j:[]));}catch(e){document.getElementById('rules-tbody').innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">⚠️</div>Failed to load</div></td></tr>';}}
-function renderRules(rules){document.getElementById('rules-cnt').textContent=rules.length;document.getElementById('s-total').textContent=rules.length;document.getElementById('s-allow').textContent=rules.filter(r=>r.action==='allow'||r.type==='allow').length;document.getElementById('s-deny').textContent=rules.filter(r=>r.action==='deny'||r.action==='block'||r.type==='deny').length;const tbody=document.getElementById('rules-tbody');if(!rules.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>No rules yet. Add your first zip code!</div></td></tr>';return;}tbody.innerHTML=rules.map(r=>{const id=r.id||r._id;const zip=r.zip||r.zipCode||(r.zipCodes&&r.zipCodes[0])||'—';const type=r.action||r.type||'allow';const msg=r.message||r.errorMessage||'—';const ena=r.status==='active'||r.enabled!==false;return \`<tr><td class="mono">\${zip}</td><td><span class="badge badge-\${type}">\${type==='allow'?'✅ Allow':'🚫 Deny'}</span></td><td style="color:var(--g500);font-size:13px">\${msg}</td><td><label class="toggle"><input type="checkbox" \${ena?'checked':''} onchange="toggleRule('\${id}',this.checked)"/><span class="slider"></span></label></td><td><button class="btn btn-danger btn-sm" onclick="deleteRule('\${id}')">Delete</button></td></tr>\`;}).join('');}
+
+// ── Rules ─────────────────────────────────────────────────────────────────────
+async function loadRules(){try{const r=await fetch(API+'/api/rules');const j=await r.json();renderRules(j.data||j.rules||(Array.isArray(j)?j:[]));}catch(e){document.getElementById('rules-tbody').innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">⚠️</div>Failed to load</div></td></tr>';}}
+
+function renderRules(rules){
+  document.getElementById('rules-cnt').textContent=rules.length;
+  document.getElementById('s-total').textContent=rules.length;
+  document.getElementById('s-allow').textContent=rules.filter(r=>r.action==='allow'||r.type==='allow').length;
+  document.getElementById('s-deny').textContent=rules.filter(r=>r.action==='deny'||r.action==='block'||r.type==='deny').length;
+  const tbody=document.getElementById('rules-tbody');
+  if(!rules.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>No rules yet. Add your first zip code!</div></td></tr>';return;}
+  tbody.innerHTML=rules.map(r=>{
+    const id=r.id||r._id;
+    const zip=r.zip||r.zipCode||(r.zipCodes&&r.zipCodes.join(', '))||'—';
+    const type=r.action||r.type||'allow';
+    const msg=r.message||r.errorMessage||'—';
+    const ena=r.status==='active'||r.enabled!==false;
+    return `<tr>
+      <td><input type="checkbox" class="row-chk" data-id="${id}" onchange="onChk()"/></td>
+      <td class="mono">${zip}</td>
+      <td><span class="badge badge-${type}">${type==='allow'?'✅ Allow':'🚫 Deny'}</span></td>
+      <td style="color:var(--g500);font-size:13px">${msg}</td>
+      <td><label class="toggle"><input type="checkbox" ${ena?'checked':''} onchange="toggleRule('${id}',this.checked)"/><span class="slider"></span></label></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRule('${id}')">Delete</button></td>
+    </tr>`;
+  }).join('');
+}
+
 async function addRule(){const zip=document.getElementById('f-zip').value.trim();const type=document.getElementById('f-type').value;const msg=document.getElementById('f-msg').value.trim();if(!zip){toast('Enter a zip / postal code','e');return;}if(zip.length<5){toast('Must be at least 5 characters','e');return;}try{const body={name:zip+' Rule',action:type,status:'active',zipCodes:[zip.toUpperCase()],message:type==='allow'?msg:'',errorMessage:type==='deny'?msg:''};const r=await fetch(API+'/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok){toast(j.message||'Failed','e');return;}document.getElementById('f-zip').value='';document.getElementById('f-msg').value='';toast('✅ Rule added!','s');loadRules();}catch(e){toast('Error: '+e.message,'e');}}
 async function deleteRule(id){if(!confirm('Delete?'))return;await fetch(API+'/api/rules/'+id,{method:'DELETE'});toast('🗑️ Deleted','s');loadRules();}
 async function toggleRule(id){try{await fetch(API+'/api/rules/'+id+'/toggle',{method:'PATCH'});toast('Updated','s');}catch(e){toast('Failed','e');}}
 document.addEventListener('keydown',e=>{if(e.target.id==='f-zip'&&e.key==='Enter')addRule();});
+
+// ── Bulk select / delete ───────────────────────────────────────────────────────
+function onChk(){
+  const checked=[...document.querySelectorAll('.row-chk:checked')];
+  const btn=document.getElementById('bulk-del-btn');
+  const all=document.getElementById('sel-all');
+  const total=document.querySelectorAll('.row-chk').length;
+  btn.style.display=checked.length?'inline-flex':'none';
+  btn.textContent=`🗑️ Delete ${checked.length} selected`;
+  all.indeterminate=checked.length>0&&checked.length<total;
+  all.checked=checked.length===total&&total>0;
+}
+function toggleAll(cb){document.querySelectorAll('.row-chk').forEach(el=>el.checked=cb.checked);onChk();}
+async function bulkDelete(){
+  const ids=[...document.querySelectorAll('.row-chk:checked')].map(el=>el.dataset.id);
+  if(!ids.length)return;
+  if(!confirm(`Delete ${ids.length} rules?`))return;
+  await Promise.all(ids.map(id=>fetch(API+'/api/rules/'+id,{method:'DELETE'})));
+  toast(`🗑️ ${ids.length} rules deleted`,'s');
+  loadRules();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportRules(format){
+  const a=document.createElement('a');
+  a.href=API+'/api/rules/export/download?format='+format;
+  a.download='zipcode-rules.'+format;
+  a.click();
+  toast('📥 Downloading '+format.toUpperCase()+'...','s');
+}
+
+function downloadTemplate(){
+  const csv='ZipCode,Type,Message\n10001,allow,Delivery available!\n90210,deny,We do not deliver here.';
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='zipcode-template.csv';
+  a.click();
+  toast('📄 Template downloaded','s');
+}
+
+// ── Import Modal ──────────────────────────────────────────────────────────────
+function closeImport(){
+  document.getElementById('imp-modal').style.display='none';
+  document.getElementById('imp-step1').style.display='block';
+  document.getElementById('imp-step2').style.display='none';
+  document.getElementById('imp-action-btn').textContent='Choose File';
+  document.getElementById('imp-back-btn').style.display='none';
+  document.getElementById('file-inp').value='';
+  _impRows=[];
+}
+function impBack(){
+  document.getElementById('imp-step1').style.display='block';
+  document.getElementById('imp-step2').style.display='none';
+  document.getElementById('imp-action-btn').textContent='Choose File';
+  document.getElementById('imp-back-btn').style.display='none';
+}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor='var(--g300)';
+  document.getElementById('drop-zone').style.background='var(--g50)';
+  const file=e.dataTransfer.files[0];
+  if(file)handleFileSelect(file);
+}
+async function handleFileSelect(file){
+  if(!file)return;
+  toast('🔍 Parsing file...','');
+  const fd=new FormData();
+  fd.append('file',file);
+  try{
+    const r=await fetch(API+'/api/rules/import/preview',{method:'POST',body:fd});
+    const j=await r.json();
+    if(!j.success){toast(j.message||'Parse failed','e');return;}
+    _impRows=j.data;
+    showPreview(j);
+  }catch(e){toast('Upload failed: '+e.message,'e');}
+}
+function showPreview(j){
+  document.getElementById('imp-step1').style.display='none';
+  document.getElementById('imp-step2').style.display='block';
+  document.getElementById('imp-action-btn').textContent='✅ Import Now';
+  document.getElementById('imp-back-btn').style.display='inline-flex';
+
+  const valid=j.data.filter(r=>r.valid).length;
+  const invalid=j.data.filter(r=>!r.valid).length;
+  const dupes=j.data.filter(r=>r.duplicate).length;
+
+  document.getElementById('imp-summary').innerHTML=`
+    <div style="background:var(--green-lt);color:var(--green-dk);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">✅ ${valid} valid</div>
+    ${invalid?`<div style="background:var(--red-lt);color:var(--red);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">⚠️ ${invalid} invalid</div>`:''}
+    ${dupes?`<div style="background:#fff8e1;color:#7c5800;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">🔁 ${dupes} duplicates</div>`:''}
+    <div style="background:var(--g100);color:var(--g700);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700">📋 ${j.total} total rows</div>
+  `;
+
+  document.getElementById('imp-preview-tbody').innerHTML=j.data.slice(0,200).map(r=>`
+    <tr style="border-bottom:1px solid var(--g100);${!r.valid?'background:#fff0ee':''}${r.duplicate?'background:#fffde7':''}">
+      <td style="padding:7px 12px;font-family:var(--mono);font-size:13px">${r.zip||'—'}</td>
+      <td style="padding:7px 12px"><span class="badge badge-${r.type}">${r.type==='allow'?'Allow':'Deny'}</span></td>
+      <td style="padding:7px 12px;font-size:12px;color:var(--g500)">${r.message||'—'}</td>
+      <td style="padding:7px 12px;font-size:12px">
+        ${!r.valid?'<span style="color:var(--red)">⚠ Invalid</span>':r.duplicate?'<span style="color:#7c5800">🔁 Duplicate</span>':'<span style="color:var(--green)">✅ New</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+async function impAction(){
+  if(_impRows.length===0){document.getElementById('file-inp').click();return;}
+  const mode=document.querySelector('input[name="imp-mode"]:checked')?.value||'merge';
+  const validRows=_impRows.filter(r=>r.valid);
+  if(!validRows.length){toast('No valid rows to import','e');return;}
+  try{
+    const r=await fetch(API+'/api/rules/import/commit',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({rows:validRows,mode})
+    });
+    const j=await r.json();
+    if(!j.success){toast(j.message||'Import failed','e');return;}
+    toast(`✅ Imported ${j.added} zip codes!`+(j.skipped?` (${j.skipped} skipped)`:''),'s');
+    closeImport();
+    loadRules();
+  }catch(e){toast('Import error: '+e.message,'e');}
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
 function sc(cId,hId){document.getElementById(hId).value=document.getElementById(cId).value;upv();}
 function sh(hId,cId){const v=document.getElementById(hId).value;if(/^#[0-9a-f]{6}$/i.test(v)){document.getElementById(cId).value=v;upv();}}
 function upv(){document.getElementById('pv-btn').style.background=document.getElementById('s-btn-c').value;document.getElementById('pv-btn').style.color=document.getElementById('s-btxt-c').value;document.getElementById('pv-btn').textContent=document.getElementById('s-btn-lbl').value||'Check';document.getElementById('pv-result').style.color=document.getElementById('s-ok-c').value;document.getElementById('pv-input').placeholder=document.getElementById('s-ph').value||'Enter zip code';document.getElementById('pv-title').textContent='📍 '+(document.getElementById('s-title').value||'Check Delivery Availability');}
 async function loadSettings(){try{const r=await fetch(API+'/api/settings');const j=await r.json();const s=j.data||j.settings||j||{};if(s.btnColor){document.getElementById('s-btn-c').value=s.btnColor;document.getElementById('s-btn-ch').value=s.btnColor;}if(s.btnTxt){document.getElementById('s-btxt-c').value=s.btnTxt;document.getElementById('s-btxt-ch').value=s.btnTxt;}if(s.okColor){document.getElementById('s-ok-c').value=s.okColor;document.getElementById('s-ok-ch').value=s.okColor;}if(s.errColor){document.getElementById('s-err-c').value=s.errColor;document.getElementById('s-err-ch').value=s.errColor;}upv();}catch(e){}}
 async function saveSettings(){const s={btnColor:document.getElementById('s-btn-c').value,btnTxt:document.getElementById('s-btxt-c').value,okColor:document.getElementById('s-ok-c').value,errColor:document.getElementById('s-err-c').value,widgetLabel:document.getElementById('s-title').value,widgetPlaceholder:document.getElementById('s-ph').value,okMsg:document.getElementById('s-ok-msg').value,errMsg:document.getElementById('s-err-msg').value};try{await fetch(API+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});toast('💾 Saved!','s');}catch(e){toast('Failed','e');}}
-async function loadAnalytics(){const el=document.getElementById('analytics-body');try{const r=await fetch(API+'/api/analytics/recent?limit=50');const j=await r.json();const rows=j.data||[];if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>';return;}el.innerHTML='<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>'+rows.map(r=>\`<tr><td class="mono">\${r.zip}</td><td><span class="badge badge-\${r.result}">\${r.result}</span></td><td style="color:var(--g500);font-size:13px">\${r.ruleName||'—'}</td><td style="color:var(--g500);font-size:12px">\${new Date(r.timestamp).toLocaleString()}</td></tr>\`).join('')+'</tbody></table>';}catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>';}}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+async function loadAnalytics(){const el=document.getElementById('analytics-body');try{const r=await fetch(API+'/api/analytics/recent?limit=50');const j=await r.json();const rows=j.data||[];if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-icon">📊</div>No checks yet. Place the widget on your store!</div>';return;}el.innerHTML='<table><thead><tr><th>Zip</th><th>Result</th><th>Rule</th><th>Time</th></tr></thead><tbody>'+rows.map(r=>`<tr><td class="mono">${r.zip}</td><td><span class="badge badge-${r.result}">${r.result}</span></td><td style="color:var(--g500);font-size:13px">${r.ruleName||'—'}</td><td style="color:var(--g500);font-size:12px">${new Date(r.timestamp).toLocaleString()}</td></tr>`).join('')+'</tbody></table>';}catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Could not load analytics</div>';}}
+
+// ── Embed copy ────────────────────────────────────────────────────────────────
 function cc(id){const el=document.getElementById(id);const t=el.innerText.replace(/^Copy/,'').trim();navigator.clipboard.writeText(t).then(()=>toast('📋 Copied!','s'));}
-function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='on '+(type||'');setTimeout(()=>t.className='',2500);}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='on '+(type||'');setTimeout(()=>t.className='',2800);}
+
 loadRules();upv();
 </script></body></html>`;
 }
