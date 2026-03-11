@@ -24,7 +24,7 @@ const shopify = shopifyApi({
   scopes:        (process.env.SCOPES || "read_products,write_script_tags").split(","),
   hostName:      HOST.replace(/https?:\/\//, ""),
   apiVersion:    "2025-01",  // ✅ FIXED: String not math expression
-  isEmbeddedApp: true,
+  isEmbeddedApp: false,
   logger:        { level: LogSeverity.Info },
 });
 
