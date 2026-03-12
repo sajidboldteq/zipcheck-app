@@ -13,7 +13,7 @@ const settingsRouter  = require("./routes/settings");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || "https://zip-code-checker-production.up.railway.app";
+const HOST = process.env.HOST || "https://zipcheck-app-production.up.railway.app";
 const SHOPIFY_API_KEY    = process.env.SHOPIFY_API_KEY    || "";
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || "";
 const SCOPES             = process.env.SCOPES || "read_products,write_script_tags";
