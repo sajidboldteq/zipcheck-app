@@ -174,6 +174,90 @@ app.get("/embed", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+
+// ── Stripe ─────────────────────────────────────────────────────────────────────
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+function stripeRequest(method, path, data) {
+  return new Promise((resolve, reject) => {
+    const body   = data ? new URLSearchParams(data).toString() : "";
+    const parsed = new URL("https://api.stripe.com" + path);
+    const opts   = {
+      hostname: "api.stripe.com", path: parsed.pathname + parsed.search, method,
+      headers: {
+        "Authorization": "Bearer " + STRIPE_SECRET,
+        "Content-Type":  "application/x-www-form-urlencoded",
+        "Content-Length": Buffer.byteLength(body)
+      }
+    };
+    const req = https.request(opts, (res) => {
+      let raw = "";
+      res.on("data", c => raw += c);
+      res.on("end", () => { try { resolve({ data: JSON.parse(raw), status: res.statusCode }); } catch(e) { resolve({ data: raw, status: res.statusCode }); } });
+    });
+    req.on("error", reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+// Create subscription with 3-day trial
+app.post("/api/create-subscription", async (req, res) => {
+  const { paymentMethodId, email, name, priceId, plan, billing } = req.body;
+  if (!paymentMethodId || !email || !priceId) return res.status(400).json({ error: "Missing required fields" });
+  try {
+    // Create or retrieve customer
+    const custRes = await stripeRequest("POST", "/v1/customers", { email, name, payment_method: paymentMethodId, "invoice_settings[default_payment_method]": paymentMethodId });
+    if (custRes.status !== 200) return res.status(400).json({ error: custRes.data.error?.message || "Failed to create customer" });
+    const customerId = custRes.data.id;
+    // Create subscription with trial
+    const subData = {
+      customer:                  customerId,
+      "items[0][price]":         priceId,
+      "trial_period_days":       "3",
+      "payment_settings[payment_method_types][0]": "card",
+      "payment_settings[save_default_payment_method]": "on_subscription",
+      "expand[0]":               "latest_invoice.payment_intent"
+    };
+    const subRes = await stripeRequest("POST", "/v1/subscriptions", subData);
+    if (subRes.status !== 200) return res.status(400).json({ error: subRes.data.error?.message || "Failed to create subscription" });
+    const sub = subRes.data;
+    // Handle 3D Secure
+    const pi = sub.latest_invoice?.payment_intent;
+    if (pi && pi.status === "requires_action") {
+      return res.json({ requiresAction: true, clientSecret: pi.client_secret, subscriptionId: sub.id });
+    }
+    console.log(`✅ Subscription created: ${sub.id} for ${email} (${plan} ${billing})`);
+    res.json({ success: true, subscriptionId: sub.id, customerId });
+  } catch(e) { console.error("Stripe error:", e.message); res.status(500).json({ error: "Payment processing failed" }); }
+});
+
+// Stripe Webhook (endpoint: https://webarttechsolution.com/api/stripe-webhook)
+app.post("/api/stripe-webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const sig     = req.headers["stripe-signature"];
+  const payload = req.body;
+  let event;
+  if (STRIPE_WEBHOOK_SECRET) {
+    try {
+      const hmac    = require("crypto").createHmac("sha256", STRIPE_WEBHOOK_SECRET);
+      const parts   = sig.split(",").reduce((acc, p) => { const [k,v]=p.split("="); acc[k]=v; return acc; }, {});
+      const signed  = `${parts.t}.${payload.toString()}`;
+      const expected = require("crypto").createHmac("sha256", STRIPE_WEBHOOK_SECRET).update(signed).digest("hex");
+      if (expected !== parts.v1) return res.status(400).send("Invalid signature");
+      event = JSON.parse(payload);
+    } catch(e) { return res.status(400).send("Webhook error: " + e.message); }
+  } else { try { event = JSON.parse(payload); } catch(e) { return res.status(400).send("Invalid JSON"); } }
+  switch (event.type) {
+    case "customer.subscription.created": console.log("✅ Subscription created:", event.data.object.id); break;
+    case "customer.subscription.updated": console.log("🔄 Subscription updated:", event.data.object.id); break;
+    case "customer.subscription.deleted": console.log("❌ Subscription cancelled:", event.data.object.id); currentPlan = "free"; break;
+    case "invoice.payment_succeeded":     console.log("💰 Payment succeeded:", event.data.object.id); break;
+    case "invoice.payment_failed":        console.log("⚠️ Payment failed:", event.data.object.id); break;
+    default: console.log("Unhandled webhook:", event.type);
+  }
+  res.json({ received: true });
+});
 app.use("/api/rules",     rulesRouter);
 app.use("/api/groups",    groupsRouter);
 app.use("/api/analytics", analyticsRouter);
@@ -193,6 +277,7 @@ function buildAdminHTML() {
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ZipCheck — Admin</title>
+<script src="https://js.stripe.com/v3/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -320,9 +405,9 @@ td.mono{font-family:var(--mono);font-weight:600;font-size:13px}
 .copy-btn:hover{background:rgba(255,255,255,.15);color:#fff}
 .info-box{background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde047;border-radius:10px;padding:14px 18px;font-size:13px;color:#854d0e;margin:12px 0;line-height:1.6;display:flex;gap:10px;align-items:flex-start}
 
-/* ══ SETTINGS 2-COL ══ */
+/* ══ SETTINGS LAYOUT ══ */
 .settings-outer{padding:22px}
-.settings-2col{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+.settings-2col{display:flex;flex-direction:column;gap:0}
 .settings-section{margin-bottom:24px}
 .settings-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g500);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:8px}
 .settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -334,18 +419,23 @@ td.mono{font-family:var(--mono);font-weight:600;font-size:13px}
 .color-swatch{width:42px;height:38px;padding:3px;border:1.5px solid var(--g200);border-radius:9px;cursor:pointer;box-shadow:var(--shadow-xs)}
 .color-row input[type=text]{flex:1}
 
-/* Preview panel */
-.preview-panel{position:sticky;top:0}
+/* Preview panel — sits BELOW config, full width */
+.preview-panel{margin-top:24px;padding-top:22px;border-top:1px solid var(--g100)}
+.preview-panel-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--g500);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .preview-card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow)}
-.preview-tabs{display:flex;border-bottom:2px solid var(--g100);background:var(--g50);padding:4px 4px 0}
-.preview-tab{flex:1;padding:9px 12px;border:none;background:none;font-size:12px;font-weight:600;color:var(--g500);cursor:pointer;font-family:var(--font);transition:all .15s;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;gap:6px}
+.preview-tabs{display:flex;border-bottom:2px solid var(--g100);background:var(--g50);padding:4px 4px 0;gap:4px}
+.preview-tab{flex:1;max-width:160px;padding:9px 16px;border:none;background:none;font-size:12px;font-weight:600;color:var(--g500);cursor:pointer;font-family:var(--font);transition:all .15s;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;gap:6px}
 .preview-tab.active{color:var(--green-dk);background:var(--white);box-shadow:0 -1px 0 0 var(--g200) inset}
-.preview-body{padding:18px}
-.preview-widget-wrap{background:var(--g50);border-radius:10px;padding:16px}
+.preview-body{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.preview-body-single{padding:22px}
+.preview-section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g500);margin-bottom:12px}
+.preview-widget-wrap{background:var(--g50);border-radius:12px;padding:16px}
 .preview-widget{border:1.5px solid var(--g200);border-radius:12px;padding:18px;background:#fff;box-shadow:var(--shadow-sm)}
-.mobile-frame{width:280px;margin:0 auto;border:8px solid var(--g900);border-radius:28px;overflow:hidden;background:#fff;box-shadow:var(--shadow-lg)}
-.mobile-notch{height:24px;background:var(--g900);border-radius:0 0 14px 14px;width:80px;margin:0 auto;margin-top:-8px}
-.mobile-content{padding:12px}
+.mobile-outer{display:flex;flex-direction:column;align-items:center}
+.mobile-frame{width:260px;border:8px solid #1c1c1e;border-radius:36px;overflow:hidden;background:#fff;box-shadow:var(--shadow-lg);position:relative}
+.mobile-statusbar{height:28px;background:#1c1c1e;display:flex;align-items:center;justify-content:center}
+.mobile-dynamic-island{width:90px;height:22px;background:#000;border-radius:20px;margin:3px auto 0}
+.mobile-content{padding:14px}
 
 /* ══ CUSTOM CSS ══ */
 .css-editor{width:100%;min-height:320px;font-family:var(--mono);font-size:13px;padding:18px;border:1.5px solid var(--g200);border-radius:12px;background:#0d1117;color:#79c0ff;outline:none;resize:vertical;line-height:1.8;transition:border-color .15s}
@@ -424,20 +514,22 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 .modal-box{background:#fff;border-radius:20px;width:min(680px,95vw);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.3)}
 
 /* ══ UPGRADE MODAL ══ */
-.upgrade-modal-box{background:#fff;border-radius:20px;width:min(480px,95vw);overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.3)}
-.upgrade-modal-head{background:linear-gradient(135deg,#0d1117,#1f2937);padding:28px 28px 24px;text-align:center}
+.upgrade-modal-box{background:#fff;border-radius:20px;width:min(500px,95vw);overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.3)}
+.upgrade-modal-head{background:linear-gradient(135deg,#065f46 0%,#059669 50%,#00a67e 100%);padding:28px 28px 24px;text-align:center}
 .upgrade-modal-icon{font-size:48px;margin-bottom:12px}
 .upgrade-modal-title{font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:-.3px}
-.upgrade-modal-sub{font-size:13px;color:rgba(255,255,255,.6)}
-.upgrade-modal-body{padding:24px 28px}
-.upgrade-plan-summary{background:var(--g50);border-radius:12px;padding:16px 18px;margin-bottom:20px;border:1px solid var(--g200)}
+.upgrade-modal-sub{font-size:13px;color:rgba(255,255,255,.75)}
+.upgrade-modal-body{padding:24px 28px;max-height:75vh;overflow-y:auto}
+.upgrade-plan-summary{background:linear-gradient(135deg,var(--green-lt),#f0fdf4);border-radius:12px;padding:16px 18px;margin-bottom:20px;border:1px solid var(--green-md)}
 .upgrade-form{display:flex;flex-direction:column;gap:14px}
 .upgrade-input-group{display:flex;flex-direction:column;gap:6px}
 .upgrade-input-group label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g600)}
 .upgrade-input{padding:11px 14px;border:1.5px solid var(--g200);border-radius:10px;font-size:14px;font-family:var(--font);outline:none;transition:all .15s;background:var(--white)}
 .upgrade-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,166,126,.12)}
-.card-row{display:grid;grid-template-columns:1fr 100px 80px;gap:10px}
+.card-row{display:grid;grid-template-columns:1fr 110px 88px;gap:10px}
 .secure-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--g400);justify-content:center;margin-top:4px}
+.stripe-element{padding:11px 14px;border:1.5px solid var(--g200);border-radius:10px;background:var(--white);transition:all .15s;min-height:42px}
+.stripe-element.StripeElement--focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,166,126,.12)}
 .trial-note{background:var(--green-lt);border:1px solid var(--green-md);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--green-xdk);text-align:center;font-weight:600;margin-bottom:4px}
 
 /* ══ TOAST ══ */
@@ -537,66 +629,65 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
     <div class="card-head"><h2>⚙️ Widget Configuration</h2></div>
     <div class="settings-outer">
       <div class="settings-2col">
-        <!-- LEFT: controls -->
-        <div>
-          <div class="settings-section">
-            <div class="settings-section-title">🎨 Colors</div>
-            <div class="settings-grid">
-              <div class="set-item"><label>Button Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-btn-c" value="#008060" oninput="sc('s-btn-c','s-btn-ch');upv()"/><input type="text" id="s-btn-ch" value="#008060" maxlength="7" oninput="sh('s-btn-ch','s-btn-c');upv()"/></div></div>
-              <div class="set-item"><label>Button Text</label><div class="color-row"><input type="color" class="color-swatch" id="s-btxt-c" value="#ffffff" oninput="sc('s-btxt-c','s-btxt-ch');upv()"/><input type="text" id="s-btxt-ch" value="#ffffff" maxlength="7" oninput="sh('s-btxt-ch','s-btxt-c');upv()"/></div></div>
-              <div class="set-item"><label>Success Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-ok-c" value="#008060" oninput="sc('s-ok-c','s-ok-ch');upv()"/><input type="text" id="s-ok-ch" value="#008060" maxlength="7" oninput="sh('s-ok-ch','s-ok-c');upv()"/></div></div>
-              <div class="set-item"><label>Error Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-err-c" value="#d72c0d" oninput="sc('s-err-c','s-err-ch');upv()"/><input type="text" id="s-err-ch" value="#d72c0d" maxlength="7" oninput="sh('s-err-ch','s-err-c');upv()"/></div></div>
-            </div>
-          </div>
-          <div class="settings-section">
-            <div class="settings-section-title">📝 Text &amp; Labels</div>
-            <div class="settings-grid">
-              <div class="set-item"><label>Widget Title</label><input type="text" id="s-title" value="Check Delivery Availability" oninput="upv()"/></div>
-              <div class="set-item"><label>Button Text</label><input type="text" id="s-btn-lbl" value="Check" oninput="upv()"/></div>
-              <div class="set-item"><label>Placeholder</label><input type="text" id="s-ph" value="Enter zip / postal code" oninput="upv()"/></div>
-              <div class="set-item"><label>Allow Message</label><input type="text" id="s-ok-msg" value="Delivery available!" oninput="upv()"/></div>
-              <div class="set-item" style="grid-column:span 2"><label>Deny Message</label><input type="text" id="s-err-msg" value="Delivery not available in your area." oninput="upv()"/></div>
-            </div>
+        <!-- COLORS -->
+        <div class="settings-section">
+          <div class="settings-section-title">🎨 Colors</div>
+          <div class="settings-grid">
+            <div class="set-item"><label>Button Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-btn-c" value="#008060" oninput="sc('s-btn-c','s-btn-ch');upv()"/><input type="text" id="s-btn-ch" value="#008060" maxlength="7" oninput="sh('s-btn-ch','s-btn-c');upv()"/></div></div>
+            <div class="set-item"><label>Button Text</label><div class="color-row"><input type="color" class="color-swatch" id="s-btxt-c" value="#ffffff" oninput="sc('s-btxt-c','s-btxt-ch');upv()"/><input type="text" id="s-btxt-ch" value="#ffffff" maxlength="7" oninput="sh('s-btxt-ch','s-btxt-c');upv()"/></div></div>
+            <div class="set-item"><label>Success Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-ok-c" value="#008060" oninput="sc('s-ok-c','s-ok-ch');upv()"/><input type="text" id="s-ok-ch" value="#008060" maxlength="7" oninput="sh('s-ok-ch','s-ok-c');upv()"/></div></div>
+            <div class="set-item"><label>Error Color</label><div class="color-row"><input type="color" class="color-swatch" id="s-err-c" value="#d72c0d" oninput="sc('s-err-c','s-err-ch');upv()"/><input type="text" id="s-err-ch" value="#d72c0d" maxlength="7" oninput="sh('s-err-ch','s-err-c');upv()"/></div></div>
           </div>
         </div>
-        <!-- RIGHT: preview -->
+        <!-- TEXT & LABELS -->
+        <div class="settings-section">
+          <div class="settings-section-title">📝 Text &amp; Labels</div>
+          <div class="settings-grid">
+            <div class="set-item"><label>Widget Title</label><input type="text" id="s-title" value="Check Delivery Availability" oninput="upv()"/></div>
+            <div class="set-item"><label>Button Text</label><input type="text" id="s-btn-lbl" value="Check" oninput="upv()"/></div>
+            <div class="set-item"><label>Placeholder</label><input type="text" id="s-ph" value="Enter zip / postal code" oninput="upv()"/></div>
+            <div class="set-item"><label>Allow Message</label><input type="text" id="s-ok-msg" value="Delivery available!" oninput="upv()"/></div>
+            <div class="set-item" style="grid-column:span 2"><label>Deny Message</label><input type="text" id="s-err-msg" value="Delivery not available in your area." oninput="upv()"/></div>
+          </div>
+        </div>
+        <!-- LIVE PREVIEW — below config, side-by-side desktop+mobile -->
         <div class="preview-panel">
+          <div class="preview-panel-title">👁 Live Preview</div>
           <div class="preview-card">
-            <div class="preview-tabs">
-              <button class="preview-tab active" onclick="switchPreview('desktop',this)">🖥 Desktop</button>
-              <button class="preview-tab" onclick="switchPreview('mobile',this)">📱 Mobile</button>
-            </div>
-            <div class="preview-body">
-              <div id="pv-desktop">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+              <!-- Desktop preview -->
+              <div style="padding:20px;border-right:1px solid var(--g100)">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g400);margin-bottom:14px;display:flex;align-items:center;gap:6px"><span>🖥</span> Desktop</div>
                 <div class="preview-widget-wrap">
                   <div class="preview-widget">
                     <div id="pv-title" style="font-weight:700;font-size:14px;margin-bottom:12px;color:#1a1a1a">📍 Check Delivery Availability</div>
-                    <div style="display:flex;gap:8px;margin-bottom:10px">
-                      <input id="pv-input" placeholder="Enter zip / postal code" style="flex:1;padding:10px 13px;border:1.5px solid #d1d5db;border-radius:9px;font-size:14px;outline:none;font-family:inherit" readonly/>
-                      <button id="pv-btn" style="padding:10px 16px;background:#008060;color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">Check</button>
+                    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                      <input id="pv-input" placeholder="Enter zip / postal code" style="flex:1;min-width:100px;padding:9px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;font-family:inherit" readonly/>
+                      <button id="pv-btn" style="padding:9px 14px;background:#008060;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">Check</button>
                     </div>
-                    <div id="pv-result" style="font-size:13px;font-weight:600;color:#008060">✅ <span id="pv-ok-msg">Delivery available!</span></div>
-                    <div id="pv-err" style="font-size:13px;font-weight:600;color:#d72c0d;margin-top:5px">🚫 <span id="pv-err-msg">Delivery not available in your area.</span></div>
+                    <div id="pv-result" style="font-size:12px;font-weight:600;color:#008060">✅ <span id="pv-ok-msg">Delivery available!</span></div>
+                    <div id="pv-err" style="font-size:12px;font-weight:600;color:#d72c0d;margin-top:4px">🚫 <span id="pv-err-msg">Not available in your area.</span></div>
                   </div>
                 </div>
               </div>
-              <div id="pv-mobile" style="display:none">
-                <div style="background:var(--g50);border-radius:10px;padding:16px">
+              <!-- Mobile preview -->
+              <div style="padding:20px;background:var(--g50)">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g400);margin-bottom:14px;display:flex;align-items:center;gap:6px"><span>📱</span> Mobile</div>
+                <div class="mobile-outer">
                   <div class="mobile-frame">
-                    <div class="mobile-notch"></div>
+                    <div class="mobile-statusbar"><div class="mobile-dynamic-island"></div></div>
                     <div class="mobile-content">
-                      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:#1a1a1a">📍 <span id="pvm-title">Check Delivery Availability</span></div>
-                      <input id="pvm-input" placeholder="Enter zip / postal code" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;outline:none;margin-bottom:8px;box-sizing:border-box;font-family:inherit" readonly/>
-                      <button id="pvm-btn" style="width:100%;padding:10px;background:#008060;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">Check</button>
-                      <div id="pvm-result" style="font-size:12px;font-weight:600;color:#008060;margin-top:8px">✅ <span id="pvm-ok-msg">Delivery available!</span></div>
+                      <div style="font-size:11px;font-weight:700;margin-bottom:9px;color:#1a1a1a">📍 <span id="pvm-title">Check Delivery Availability</span></div>
+                      <input id="pvm-input" placeholder="Enter zip / postal code" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:7px;font-size:12px;outline:none;margin-bottom:7px;box-sizing:border-box;font-family:inherit" readonly/>
+                      <button id="pvm-btn" style="width:100%;padding:9px;background:#008060;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer">Check</button>
+                      <div id="pvm-result" style="font-size:11px;font-weight:600;color:#008060;margin-top:7px">✅ <span id="pvm-ok-msg">Delivery available!</span></div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div style="margin-top:14px;padding-top:13px;border-top:1px solid var(--g100);text-align:center">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g400);margin-bottom:4px">Live on storefront after Save</div>
-                <div style="font-size:11px;color:var(--g400)">Colors &amp; text sync automatically.</div>
-              </div>
+            </div>
+            <div style="padding:12px 20px;background:linear-gradient(90deg,var(--green-lt),#f0fdf4);border-top:1px solid var(--green-md);text-align:center">
+              <span style="font-size:11px;font-weight:600;color:var(--green-xdk)">✅ Preview updates in real time · Changes go live on your store after Save</span>
             </div>
           </div>
         </div>
@@ -895,15 +986,15 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
     <div class="upgrade-modal-body">
       <div class="trial-note">✅ 3-day free trial — you won't be charged until day 4</div>
       <div class="upgrade-plan-summary" id="um-summary">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:14px;font-weight:700" id="um-plan-name">Starter Plan</span>
-          <span style="font-size:20px;font-weight:900;color:var(--green)" id="um-price">$9.99/mo</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:15px;font-weight:800;color:var(--g900)" id="um-plan-name">Starter Plan</span>
+          <span style="font-size:22px;font-weight:900;color:var(--green)" id="um-price">$9.99/mo</span>
         </div>
         <div style="font-size:12px;color:var(--g500)" id="um-billing-note">Billed monthly · Cancel anytime</div>
       </div>
       <div class="upgrade-form" id="upgrade-form">
         <div class="upgrade-input-group">
-          <label>Full Name on Card</label>
+          <label>Full Name</label>
           <input class="upgrade-input" id="um-name" placeholder="John Smith" autocomplete="name"/>
         </div>
         <div class="upgrade-input-group">
@@ -911,25 +1002,16 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
           <input class="upgrade-input" id="um-email" type="email" placeholder="john@example.com" autocomplete="email"/>
         </div>
         <div class="upgrade-input-group">
-          <label>Card Number</label>
-          <input class="upgrade-input" id="um-card" placeholder="1234 5678 9012 3456" maxlength="19" oninput="fmtCard(this)"/>
+          <label>Card Details</label>
+          <div id="stripe-card-element" class="stripe-element"></div>
+          <div id="stripe-card-errors" style="font-size:12px;color:var(--red);margin-top:5px;min-height:16px"></div>
         </div>
-        <div class="card-row">
-          <div class="upgrade-input-group">
-            <label>Expiry</label>
-            <input class="upgrade-input" id="um-exp" placeholder="MM / YY" maxlength="7" oninput="fmtExp(this)"/>
-          </div>
-          <div class="upgrade-input-group">
-            <label>CVC</label>
-            <input class="upgrade-input" id="um-cvc" placeholder="123" maxlength="4" type="password"/>
-          </div>
-        </div>
-        <button class="btn btn-primary" style="width:100%;padding:13px;font-size:14px;border-radius:10px;justify-content:center" onclick="submitUpgrade()">
+        <button class="btn btn-primary" id="um-submit-btn" style="width:100%;padding:13px;font-size:14px;border-radius:10px;justify-content:center" onclick="submitUpgrade()">
           🔒 Start Free Trial
         </button>
-        <div class="secure-badge">🔒 256-bit SSL encrypted · PCI compliant · Cancel anytime</div>
+        <div class="secure-badge">🔒 256-bit SSL · Secured by Stripe · Cancel anytime</div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="closeUpgradeModal()">Maybe later</button>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:10px" onclick="closeUpgradeModal()">Maybe later</button>
     </div>
   </div>
 </div>
@@ -1055,28 +1137,22 @@ function upv() {
   const lbl    = document.getElementById('s-btn-lbl').value || 'Check';
   const okMsg  = document.getElementById('s-ok-msg').value || 'Delivery available!';
   const errMsg = document.getElementById('s-err-msg').value || 'Delivery not available in your area.';
-  // Desktop
-  document.getElementById('pv-btn').style.cssText  = \`padding:10px 16px;background:\${btn};color:\${btxt};border:none;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap\`;
-  document.getElementById('pv-btn').textContent     = lbl;
-  document.getElementById('pv-result').style.color  = ok;
-  document.getElementById('pv-err').style.color     = err;
-  document.getElementById('pv-input').placeholder   = ph;
-  document.getElementById('pv-title').textContent   = '📍 ' + title;
-  document.getElementById('pv-ok-msg').textContent  = okMsg;
-  document.getElementById('pv-err-msg').textContent = errMsg;
-  // Mobile
-  document.getElementById('pvm-btn').style.cssText  = \`width:100%;padding:10px;background:\${btn};color:\${btxt};border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer\`;
-  document.getElementById('pvm-btn').textContent     = lbl;
-  document.getElementById('pvm-result').style.color  = ok;
-  document.getElementById('pvm-input').placeholder   = ph;
-  document.getElementById('pvm-title').textContent   = title;
-  document.getElementById('pvm-ok-msg').textContent  = okMsg;
-}
-function switchPreview(mode, btn) {
-  document.querySelectorAll('.preview-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('pv-desktop').style.display = mode==='desktop'?'block':'none';
-  document.getElementById('pv-mobile').style.display  = mode==='mobile' ?'block':'none';
+  // Desktop preview
+  const pvBtn = document.getElementById('pv-btn');
+  if(pvBtn){ pvBtn.style.background=btn; pvBtn.style.color=btxt; pvBtn.textContent=lbl; }
+  const pvRes = document.getElementById('pv-result'); if(pvRes) pvRes.style.color=ok;
+  const pvErr = document.getElementById('pv-err');    if(pvErr) pvErr.style.color=err;
+  const pvInp = document.getElementById('pv-input');  if(pvInp) pvInp.placeholder=ph;
+  const pvTit = document.getElementById('pv-title');  if(pvTit) pvTit.textContent='📍 '+title;
+  const pvOkM = document.getElementById('pv-ok-msg'); if(pvOkM) pvOkM.textContent=okMsg;
+  const pvErM = document.getElementById('pv-err-msg'); if(pvErM) pvErM.textContent=errMsg.length>28?errMsg.slice(0,28)+'…':errMsg;
+  // Mobile preview
+  const pvmBtn = document.getElementById('pvm-btn');
+  if(pvmBtn){ pvmBtn.style.background=btn; pvmBtn.style.color=btxt; pvmBtn.textContent=lbl; }
+  const pvmRes = document.getElementById('pvm-result'); if(pvmRes) pvmRes.style.color=ok;
+  const pvmInp = document.getElementById('pvm-input');  if(pvmInp) pvmInp.placeholder=ph;
+  const pvmTit = document.getElementById('pvm-title');  if(pvmTit) pvmTit.textContent=title;
+  const pvmOkM = document.getElementById('pvm-ok-msg'); if(pvmOkM) pvmOkM.textContent=okMsg;
 }
 async function loadSettings() {
   try {
@@ -1197,6 +1273,44 @@ function upgradePlan(plan) {
   loadRules();
 }
 
+// ── STRIPE SETUP ──────────────────────────────────────────────────────────────
+const STRIPE_PK = 'pk_test_51TA5DoDJPxly7tLbHUCAYmVMByYHqVVNDNnYkYqhKea6SVdW2v1NVVDXJP8VrOsaePmgYTPvvEA0YVZtFEQPAKMx004C5e3rHf';
+// Stripe Price IDs — add your real IDs from Stripe Dashboard below
+// Dashboard → Products → Create product for each plan → copy Price ID
+const STRIPE_PRICES = {
+  monthly: {
+    basic:   'price_BASIC_MONTHLY_ID',    // replace with real Stripe Price ID
+    starter: 'price_STARTER_MONTHLY_ID',  // replace with real Stripe Price ID
+    pro:     'price_PRO_MONTHLY_ID'        // replace with real Stripe Price ID
+  },
+  yearly: {
+    basic:   'price_BASIC_YEARLY_ID',     // replace with real Stripe Price ID
+    starter: 'price_STARTER_YEARLY_ID',   // replace with real Stripe Price ID
+    pro:     'price_PRO_YEARLY_ID'         // replace with real Stripe Price ID
+  }
+};
+let stripe = null, cardElement = null;
+function initStripe() {
+  if (stripe) return;
+  try {
+    stripe = Stripe(STRIPE_PK);
+    const elements = stripe.elements({
+      fonts: [{ cssSrc: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap' }]
+    });
+    cardElement = elements.create('card', {
+      style: {
+        base: { fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } },
+        invalid: { color: '#ef4444' }
+      },
+      hidePostalCode: false
+    });
+    cardElement.mount('#stripe-card-element');
+    cardElement.on('change', e => {
+      document.getElementById('stripe-card-errors').textContent = e.error ? e.error.message : '';
+    });
+  } catch(err) { console.log('Stripe init error:', err.message); }
+}
+
 // ── UPGRADE MODAL ─────────────────────────────────────────────────────────────
 function openUpgradeModal(plan, price) {
   if (plan === 'free') { upgradePlan('free'); toast('✅ You are now on the Free plan','s'); return; }
@@ -1204,39 +1318,68 @@ function openUpgradeModal(plan, price) {
   const names = { basic:'Basic', starter:'Starter', pro:'Pro' };
   document.getElementById('um-title').textContent    = 'Upgrade to ' + names[plan];
   document.getElementById('um-plan-name').textContent = names[plan] + ' Plan';
-  document.getElementById('um-price').textContent    = '$'+price.toFixed(2)+(billingMode==='monthly'?'/mo':'/mo (billed yearly)');
-  document.getElementById('um-billing-note').textContent = billingMode==='monthly' ? 'Billed monthly · Cancel anytime' : 'Billed $'+YEARLY_TOTAL[plan].toFixed(2)+' yearly · Cancel anytime';
+  document.getElementById('um-price').textContent    = '$'+price.toFixed(2)+(billingMode==='monthly'?'/mo':'/mo (yearly)');
+  document.getElementById('um-billing-note').textContent = billingMode==='monthly'
+    ? 'Billed monthly · Cancel anytime'
+    : 'Billed $'+YEARLY_TOTAL[plan].toFixed(2)+' yearly · Save 20% · Cancel anytime';
   document.getElementById('um-name').value  = '';
   document.getElementById('um-email').value = '';
-  document.getElementById('um-card').value  = '';
-  document.getElementById('um-exp').value   = '';
-  document.getElementById('um-cvc').value   = '';
+  document.getElementById('stripe-card-errors').textContent = '';
   document.getElementById('upgrade-modal').classList.add('open');
+  setTimeout(initStripe, 50);
 }
 function closeUpgradeModal() { document.getElementById('upgrade-modal').classList.remove('open'); }
-function fmtCard(el) { el.value=el.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim().slice(0,19); }
-function fmtExp(el)  { el.value=el.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/,'$1 / $2').slice(0,7); }
+
 async function submitUpgrade() {
   const name  = document.getElementById('um-name').value.trim();
   const email = document.getElementById('um-email').value.trim();
-  const card  = document.getElementById('um-card').value.replace(/\s/g,'');
-  const exp   = document.getElementById('um-exp').value.trim();
-  const cvc   = document.getElementById('um-cvc').value.trim();
-  if (!name)           { toast('Please enter your name','e'); return; }
-  if (!email||!email.includes('@')) { toast('Please enter a valid email','e'); return; }
-  if (card.length < 15) { toast('Please enter a valid card number','e'); return; }
-  if (!exp||exp.length<4) { toast('Please enter card expiry','e'); return; }
-  if (!cvc||cvc.length<3) { toast('Please enter CVC','e'); return; }
-  const btn = document.querySelector('#upgrade-modal .btn-primary');
-  btn.textContent = '⏳ Processing...';
-  btn.disabled = true;
-  // Simulate payment processing (connect to Stripe/payment gateway)
-  await new Promise(r => setTimeout(r, 1800));
-  btn.textContent = '🔒 Start Free Trial';
-  btn.disabled = false;
-  closeUpgradeModal();
-  upgradePlan(_upgradeData.plan);
-  toast('🎉 Welcome to '+_upgradeData.plan.charAt(0).toUpperCase()+_upgradeData.plan.slice(1)+'! Trial started — no charge for 3 days.','s');
+  if (!name)  { toast('Please enter your full name','e'); return; }
+  if (!email || !email.includes('@')) { toast('Please enter a valid email','e'); return; }
+  if (!stripe || !cardElement) { toast('Payment not initialized. Please refresh.','e'); return; }
+  const btn = document.getElementById('um-submit-btn');
+  btn.innerHTML = '⏳ Processing...'; btn.disabled = true;
+  try {
+    // Step 1: Create payment method via Stripe.js
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+      billing_details: { name, email }
+    });
+    if (error) {
+      document.getElementById('stripe-card-errors').textContent = error.message;
+      btn.innerHTML = '🔒 Start Free Trial'; btn.disabled = false;
+      return;
+    }
+    // Step 2: Send to your backend to create subscription
+    const priceId = STRIPE_PRICES[billingMode][_upgradeData.plan];
+    const res = await fetch(API + '/api/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMethodId: paymentMethod.id, email, name, priceId, plan: _upgradeData.plan, billing: billingMode })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      toast(data.error || 'Payment failed. Please try again.', 'e');
+      btn.innerHTML = '🔒 Start Free Trial'; btn.disabled = false;
+      return;
+    }
+    // Step 3: Handle 3D Secure if needed
+    if (data.requiresAction && data.clientSecret) {
+      const { error: confirmError } = await stripe.confirmCardPayment(data.clientSecret);
+      if (confirmError) {
+        toast(confirmError.message, 'e');
+        btn.innerHTML = '🔒 Start Free Trial'; btn.disabled = false;
+        return;
+      }
+    }
+    btn.innerHTML = '🔒 Start Free Trial'; btn.disabled = false;
+    closeUpgradeModal();
+    upgradePlan(_upgradeData.plan);
+    toast('🎉 Welcome to '+_upgradeData.plan.charAt(0).toUpperCase()+_upgradeData.plan.slice(1)+'! Your 3-day trial has started.','s');
+  } catch(err) {
+    toast('Network error. Please try again.','e');
+    btn.innerHTML = '🔒 Start Free Trial'; btn.disabled = false;
+  }
 }
 
 // ── FAQ ───────────────────────────────────────────────────────────────────────
