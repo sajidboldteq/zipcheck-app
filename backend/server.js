@@ -46,9 +46,11 @@ app.use(express.json());
 let appActive      = true;
 let currentPlan    = "free";
 let customCSS      = "";
-let placementMode  = "auto";   // auto | manual | cart | popup
+let placementMode  = "auto";
 let hideCartBtns   = true;
 let showOnValid    = true;
+let currentSubscriptionId = null;
+let currentCustomerId     = null;
 
 app.get("/api/app-status",   (req, res) => res.json({ active: appActive, plan: currentPlan }));
 app.post("/api/app-status",  (req, res) => {
@@ -158,12 +160,21 @@ app.get("/widget.js", (req, res) => {
     var target=null;
     for(var i=0;i<selectors.length;i++){target=document.querySelector(selectors[i]);if(target)break;}
     if(!target)return;
-    var wrap=document.createElement('div');wrap.setAttribute('data-zipcheck','');
+    var wrap=document.createElement('div');wrap.setAttribute('data-zipcheck','');wrap.setAttribute('data-zc-auto','1');
     var parent=target.closest('form')||target.parentNode;
     parent.insertBefore(wrap,target);
     build(wrap,999);
   }
-  function init(){document.querySelectorAll('[data-zipcheck]').forEach(function(el,i){build(el,i);});autoPlace();}
+  function init(){
+    if(PLACEMENT==='manual'){
+      // In manual mode: remove any previously auto-inserted widgets, only build manually placed ones
+      document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
+      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i);});
+      return;
+    }
+    document.querySelectorAll('[data-zipcheck]').forEach(function(el,i){build(el,i);});
+    autoPlace();
+  }
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
 })();`);
 });
@@ -181,7 +192,7 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 
 function stripeRequest(method, path, data) {
   return new Promise((resolve, reject) => {
-    const body   = data ? new URLSearchParams(data).toString() : "";
+    const body   = (data && method !== "DELETE") ? new URLSearchParams(data).toString() : "";
     const parsed = new URL("https://api.stripe.com" + path);
     const opts   = {
       hostname: "api.stripe.com", path: parsed.pathname + parsed.search, method,
@@ -229,8 +240,24 @@ app.post("/api/create-subscription", async (req, res) => {
       return res.json({ requiresAction: true, clientSecret: pi.client_secret, subscriptionId: sub.id });
     }
     console.log(`✅ Subscription created: ${sub.id} for ${email} (${plan} ${billing})`);
+    currentSubscriptionId = sub.id;
+    currentCustomerId     = customerId;
+    currentPlan           = plan;
     res.json({ success: true, subscriptionId: sub.id, customerId });
   } catch(e) { console.error("Stripe error:", e.message); res.status(500).json({ error: "Payment processing failed" }); }
+});
+
+// Cancel subscription
+app.post("/api/cancel-subscription", async (req, res) => {
+  if (!currentSubscriptionId) return res.status(400).json({ error: "No active subscription found" });
+  try {
+    const cancelRes = await stripeRequest("DELETE", `/v1/subscriptions/${currentSubscriptionId}`, null);
+    if (cancelRes.status !== 200) return res.status(400).json({ error: cancelRes.data.error?.message || "Failed to cancel subscription" });
+    console.log(`❌ Subscription cancelled: ${currentSubscriptionId}`);
+    currentSubscriptionId = null;
+    currentPlan           = "free";
+    res.json({ success: true, message: "Subscription cancelled. You are now on the Free plan." });
+  } catch(e) { console.error("Cancel error:", e.message); res.status(500).json({ error: "Failed to cancel subscription" }); }
 });
 
 // Stripe Webhook (endpoint: https://webarttechsolution.com/api/stripe-webhook)
@@ -301,7 +328,7 @@ function buildAdminHTML() {
 body{font-family:var(--font);background:#f0f2f5;color:var(--g900);height:100vh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
 
 /* ══ SIDEBAR ══════════════════════════════════════════════════════════════ */
-.sidebar{width:232px;background:var(--g950);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh}
+.sidebar{width:232px;background:linear-gradient(180deg,#1a2640 0%,#1e3a5f 100%);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
 .brand-name{font-size:15px;font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.2px}
@@ -927,9 +954,19 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
       </ul>
     </div>
   </div>
-</div>
 
-<!-- ─── FAQ ─── -->
+  <!-- ─── Cancel Subscription ─── -->
+  <div class="card" id="cancel-sub-card" style="display:none;border:1.5px solid var(--red-lt)">
+    <div class="card-head" style="background:var(--red-lt)"><h2 style="color:var(--red-dk)">⚠️ Cancel Subscription</h2></div>
+    <div style="padding:20px 22px">
+      <p style="font-size:14px;color:var(--g600);line-height:1.7;margin-bottom:16px">You are currently on the <strong id="cancel-plan-name" style="color:var(--g900)">—</strong> plan. Cancelling will immediately downgrade your account to the Free plan and stop all future charges.</p>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn" style="background:var(--red);color:#fff;border:none;padding:10px 22px;border-radius:9px;font-weight:700;font-size:14px;cursor:pointer" onclick="openCancelModal()">🚫 Cancel Subscription</button>
+        <span style="font-size:12px;color:var(--g400)">Your data and rules will be preserved after cancellation.</span>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="page" id="page-faq">
   <div class="page-header"><div><div class="page-title">Frequently Asked Questions</div><div class="page-sub">Everything you need to know about ZipCheck.</div></div></div>
   <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>How does the Zip Code Checker widget work?</span><span class="faq-chevron">▼</span></button><div class="faq-a">The widget is a lightweight script embedded on your Shopify store. When a customer enters their zip or postal code, it instantly checks your allow/deny rules via a fast API call and displays a real-time delivery message — no page reload needed. It works across all Shopify themes including dev stores.</div></div>
@@ -1012,6 +1049,27 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
         <div class="secure-badge">🔒 256-bit SSL · Secured by Stripe · Cancel anytime</div>
       </div>
       <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:10px" onclick="closeUpgradeModal()">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CANCEL SUBSCRIPTION MODAL ═══ -->
+<div class="modal-ov" id="cancel-modal">
+  <div style="background:#fff;border-radius:20px;width:min(420px,95vw);overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);padding:24px 28px;text-align:center">
+      <div style="font-size:42px;margin-bottom:10px">⚠️</div>
+      <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px">Cancel Subscription?</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.75)">This action cannot be undone</div>
+    </div>
+    <div style="padding:24px 28px">
+      <p style="font-size:14px;color:var(--g600);line-height:1.7;margin-bottom:20px">You will immediately lose access to all paid features and be downgraded to the <strong>Free plan</strong>. Your zip code rules and settings will be preserved.</p>
+      <div style="background:var(--red-lt);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:var(--red-dk);font-weight:600">
+        ❌ Popup/Header modes · Bulk CSV · Advanced features will be disabled
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeCancelModal()" style="flex:1;padding:12px;border:1.5px solid var(--g200);background:#fff;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--g700)">Keep My Plan</button>
+        <button onclick="confirmCancel()" id="confirm-cancel-btn" style="flex:1;padding:12px;background:var(--red);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer">Yes, Cancel Now</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1269,8 +1327,15 @@ function upgradePlan(plan) {
       btn.onclick = () => openUpgradeModal(p, p==='free'?0:PRICES[billingMode][p]);
     }
   });
-  fetch(API+'/api/app-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan})});
-  loadRules();
+  // Show/hide cancel card dynamically
+  const cancelCard = document.getElementById('cancel-sub-card');
+  if (plan !== 'free') {
+    cancelCard.style.display = 'block';
+    const names = {basic:'Basic',starter:'Starter',pro:'Pro'};
+    document.getElementById('cancel-plan-name').textContent = (names[plan]||plan) + ' Plan';
+  } else {
+    cancelCard.style.display = 'none';
+  }
 }
 
 // ── STRIPE SETUP ──────────────────────────────────────────────────────────────
@@ -1329,6 +1394,23 @@ function openUpgradeModal(plan, price) {
   setTimeout(initStripe, 50);
 }
 function closeUpgradeModal() { document.getElementById('upgrade-modal').classList.remove('open'); }
+function openCancelModal()  { document.getElementById('cancel-modal').classList.add('open'); }
+function closeCancelModal() { document.getElementById('cancel-modal').classList.remove('open'); }
+async function confirmCancel() {
+  const btn = document.getElementById('confirm-cancel-btn');
+  btn.textContent = '⏳ Cancelling...'; btn.disabled = true;
+  try {
+    const res  = await fetch(API + '/api/cancel-subscription', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const data = await res.json();
+    if (!res.ok || data.error) { toast(data.error || 'Failed to cancel. Please try again.', 'e'); btn.textContent = 'Yes, Cancel Now'; btn.disabled = false; return; }
+    closeCancelModal();
+    upgradePlan('free');
+    toast('✅ Subscription cancelled. You are now on the Free plan.', 's');
+  } catch(err) {
+    toast('Network error. Please try again.', 'e');
+    btn.textContent = 'Yes, Cancel Now'; btn.disabled = false;
+  }
+}
 
 async function submitUpgrade() {
   const name  = document.getElementById('um-name').value.trim();
