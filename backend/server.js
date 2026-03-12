@@ -1279,14 +1279,14 @@ const STRIPE_PK = 'pk_test_51TA5DoDJPxly7tLbHUCAYmVMByYHqVVNDNnYkYqhKea6SVdW2v1N
 // Dashboard → Products → Create product for each plan → copy Price ID
 const STRIPE_PRICES = {
   monthly: {
-    basic:   'price_BASIC_MONTHLY_ID',    // replace with real Stripe Price ID
-    starter: 'price_STARTER_MONTHLY_ID',  // replace with real Stripe Price ID
-    pro:     'price_PRO_MONTHLY_ID'        // replace with real Stripe Price ID
+    basic:   'price_1TA5K4DJPxly7tLbujDSddRS',
+    starter: 'price_1TA5KaDJPxly7tLbVM7Vtt7X',
+    pro:     'price_1TA5L6DJPxly7tLbEiY9HGtF'
   },
   yearly: {
-    basic:   'price_BASIC_YEARLY_ID',     // replace with real Stripe Price ID
-    starter: 'price_STARTER_YEARLY_ID',   // replace with real Stripe Price ID
-    pro:     'price_PRO_YEARLY_ID'         // replace with real Stripe Price ID
+    basic:   'price_1TA5KMDJPxly7tLbBCJoWsVy',
+    starter: 'price_1TA5KpDJPxly7tLbHbcONdh0',
+    pro:     'price_1TA5LNDJPxly7tLbb3hmH8vl'
   }
 };
 let stripe = null, cardElement = null;
