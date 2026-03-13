@@ -118,8 +118,8 @@ app.get("/widget.js", (req, res) => {
   var SHOW_ON_VALID=${showOnValid};
   var _css='${safeCss}';
   var CART_SELS=['[name=add]','[data-testid=add-to-cart]','.product-form__submit','[data-action=add-to-cart]','#AddToCart','#add-to-cart-btn','.shopify-payment-button__button','[data-testid=BuyNow]','[data-action=buy-now]','.btn-product-form'];
+  var CHECKOUT_SELS=['[name=checkout]','button[name=checkout]','.cart__checkout-button','.cart-checkout-button','[data-testid=checkout-btn]','input[name=checkout]'];
 
-  /* ── Shared styles ── */
   function addStyles(){
     if(document.getElementById('zc-styles'))return;
     var st=document.createElement('style');st.id='zc-styles';
@@ -142,50 +142,58 @@ app.get("/widget.js", (req, res) => {
     +'.zc-popup-res{margin-top:12px;font-size:14px;min-height:20px;font-weight:500;line-height:1.5}'
     +'.zc-popup-proceed{display:none;margin-top:14px;width:100%;padding:12px;background:linear-gradient(135deg,#065f46,#059669);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s}'
     +'.zc-popup-proceed:hover{opacity:.9;transform:translateY(-1px)}'
-    +'.zc-cart-notice{margin:0;padding:14px 18px;background:linear-gradient(135deg,#fffbeb,#fef9c3);border-top:2px solid #fde047;font-size:13px;color:#854d0e;font-weight:600;display:flex;align-items:center;gap:8px}';
+    +'.zc-cart-notice{margin:0 0 12px 0;padding:14px 18px;background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1.5px solid #fde047;border-radius:12px;font-size:13px;color:#854d0e;font-weight:600;display:flex;align-items:center;gap:8px}';
     document.head.appendChild(st);
     if(_css){var cu=document.createElement('style');cu.id='zc-custom';cu.textContent=_css;document.head.appendChild(cu);}
   }
+  /* ── Product page: hide/show Add-to-Cart buttons ── */
+  function hideCartBtns(){if(!HIDE_CART)return;CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='0';el.style.pointerEvents='none';el.setAttribute('data-zc-h','1');});});}
+  function showCartBtns(){CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){if(el.getAttribute('data-zc-h')){el.style.opacity='';el.style.pointerEvents='';el.removeAttribute('data-zc-h');}});});}
+  /* ── Cart page: hide/show Checkout button only ── */
+  function hideCheckout(){CHECKOUT_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='0.4';el.style.pointerEvents='none';el.setAttribute('data-zc-co','1');el.title='Verify zip code first';});});}
+  function showCheckout(){CHECKOUT_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){if(el.getAttribute('data-zc-co')){el.style.opacity='';el.style.pointerEvents='';el.removeAttribute('data-zc-co');el.title='';}});});}
+  function hideCart(){hideCartBtns();}
+  function showCart(){showCartBtns();}
 
-  /* ── Cart button hide/show ── */
-  function hideCart(){if(!HIDE_CART)return;CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='0';el.style.pointerEvents='none';el.setAttribute('data-zc-h','1');});});}
-  function showCart(){CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='';el.style.pointerEvents='';el.removeAttribute('data-zc-h');});});}
-
-  /* ── Zip lookup helper ── */
   async function lookupZip(zip){
     var r=await fetch(API+'/api/check/lookup/'+encodeURIComponent(zip));
-    var j=await r.json();
-    return j;
+    return await r.json();
   }
 
-  /* ── Build inline widget ── */
-  function build(el,i){
+  /* ── Build widget (product page or cart page) ── */
+  function build(el,i,opts){
+    opts=opts||{};
+    var isCartPage=opts.cartPage||false;
     addStyles();
     var label=el.getAttribute('data-label')||'${title}';
     var placeholder=el.getAttribute('data-placeholder')||'${ph}';
     var btn=el.getAttribute('data-btn-text')||'${btnLbl}';
     var ii='zci'+i,bi='zcb'+i,ri='zcr'+i;
-    el.innerHTML='<div class="zc-wrap"><span class="zc-lbl">\\u{1F4CD} '+label+'</span><div class="zc-row"><input class="zc-inp" id="'+ii+'" placeholder="'+placeholder+'" maxlength="12"/><button class="zc-btn" id="'+bi+'">'+btn+'</button></div><div class="zc-res" id="'+ri+'"></div></div>';
-    if(HIDE_CART)hideCart();
+    el.innerHTML='<div class="zc-wrap"><span class="zc-lbl">\u{1F4CD} '+label+'</span><div class="zc-row"><input class="zc-inp" id="'+ii+'" placeholder="'+placeholder+'" maxlength="12"/><button class="zc-btn" id="'+bi+'">'+btn+'</button></div><div class="zc-res" id="'+ri+'"></div></div>';
+    if(isCartPage){hideCheckout();}else if(HIDE_CART){hideCartBtns();}
     async function chk(){
       var zip=document.getElementById(ii).value.trim().toUpperCase();
       var out=document.getElementById(ri);
-      if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\\u26A0 Enter a valid zip / postal code</span>';return;}
-      out.innerHTML='<span style="color:#9ca3af">Checking\\u2026</span>';
+      if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\u26A0 Enter a valid zip / postal code</span>';return;}
+      out.innerHTML='<span style="color:#9ca3af">Checking\u2026</span>';
       try{
         var j=await lookupZip(zip);
-        if(!j.success){out.innerHTML='<span style="color:${errColor}">\\u26A0 '+(j.message||'Error')+'</span>';return;}
+        if(!j.success){out.innerHTML='<span style="color:${errColor}">\u26A0 '+(j.message||'Error')+'</span>';return;}
         var d=j.data;
-        if(d.result==='allow'){out.innerHTML='<span style="color:${okColor}">\\u2705 '+(d.message||'${okMsg}')+'</span>';if(SHOW_ON_VALID)showCart();}
-        else if(d.result==='block'||d.result==='deny'){out.innerHTML='<span style="color:${errColor}">\\u{1F6AB} '+(d.message||'${errMsg}')+'</span>';if(HIDE_CART)hideCart();}
-        else{out.innerHTML='<span style="color:#f59e0b">\\u2139\\uFE0F No delivery rule found. Please contact us.</span>';}
+        if(d.result==='allow'){
+          out.innerHTML='<span style="color:${okColor}">\u2705 '+(d.message||'${okMsg}')+'</span>';
+          if(isCartPage){showCheckout();}else if(SHOW_ON_VALID){showCartBtns();}
+        }else if(d.result==='block'||d.result==='deny'){
+          out.innerHTML='<span style="color:${errColor}">\u{1F6AB} '+(d.message||'${errMsg}')+'</span>';
+          if(isCartPage){hideCheckout();}else if(HIDE_CART){hideCartBtns();}
+        }else{out.innerHTML='<span style="color:#f59e0b">\u2139\uFE0F No delivery rule found. Please contact us.</span>';}
       }catch(e){out.innerHTML='<span style="color:${errColor}">Unable to check. Please try again.</span>';}
     }
     document.getElementById(bi).onclick=chk;
     document.getElementById(ii).onkeydown=function(e){if(e.key==='Enter')chk();};
   }
 
-  /* ── AUTO placement: inject above Add-to-Cart ── */
+  /* ── AUTO: inject above Add-to-Cart on product page ── */
   function autoPlace(){
     if(document.querySelector('[data-zc-auto]'))return;
     var selectors=['.product-form__submit','[name=add]','#AddToCart','.shopify-payment-button__button','[data-testid=add-to-cart]','.btn-product-form','[data-action=add-to-cart]'];
@@ -195,112 +203,78 @@ app.get("/widget.js", (req, res) => {
     var wrap=document.createElement('div');wrap.setAttribute('data-zipcheck','');wrap.setAttribute('data-zc-auto','1');
     var parent=target.closest('form')||target.parentNode;
     parent.insertBefore(wrap,target);
-    build(wrap,999);
+    build(wrap,999,{cartPage:false});
   }
 
-  /* ── CART PAGE placement: inject widget on cart page ── */
+  /* ── CART PAGE: inject widget before Checkout, hide Checkout until ZIP valid ── */
   function cartPagePlace(){
     if(document.getElementById('zc-cart-block'))return;
-    // Detect cart page by URL or form
     var isCart=window.location.pathname.indexOf('/cart')!==-1||document.querySelector('form[action="/cart"]')||document.querySelector('[data-cart-form]');
     if(!isCart)return;
     addStyles();
+    var checkoutBtn=null;
+    for(var ci=0;ci<CHECKOUT_SELS.length;ci++){checkoutBtn=document.querySelector(CHECKOUT_SELS[ci]);if(checkoutBtn)break;}
+    var notice=document.createElement('div');notice.className='zc-cart-notice';
+    notice.innerHTML='\u{1F4CD} Enter your zip code below to enable the Checkout button.';
     var wrap=document.createElement('div');wrap.id='zc-cart-block';wrap.setAttribute('data-zipcheck','');
-    wrap.setAttribute('data-label','${title}');
-    // Try to insert before checkout button
-    var checkoutBtn=document.querySelector('[name=checkout]')||document.querySelector('.cart__checkout-button')||document.querySelector('[data-testid=checkout-btn]')||document.querySelector('button[name=checkout]');
+    wrap.setAttribute('data-label','Verify Delivery Before Checkout');
     if(checkoutBtn){
       var parent=checkoutBtn.closest('form')||checkoutBtn.parentNode;
       parent.insertBefore(wrap,checkoutBtn);
-    } else {
-      // Fallback: append to body prominently
-      document.body.appendChild(wrap);
+      parent.insertBefore(notice,wrap);
+    }else{
+      var cartForm=document.querySelector('form[action="/cart"]')||document.querySelector('[data-cart-form]');
+      if(cartForm){cartForm.appendChild(notice);cartForm.appendChild(wrap);}
+      else{document.body.appendChild(notice);document.body.appendChild(wrap);}
     }
-    build(wrap,888);
-    // Add a notice below cart widget
-    var notice=document.createElement('div');notice.className='zc-cart-notice';
-    notice.innerHTML='\\u{1F4CD} Please verify your delivery zip code before proceeding to checkout.';
-    wrap.parentNode.insertBefore(notice,wrap.nextSibling);
+    build(wrap,888,{cartPage:true});
+    // Watch for dynamically rendered checkout buttons
+    var mo=new MutationObserver(function(){
+      CHECKOUT_SELS.forEach(function(sel){
+        document.querySelectorAll(sel).forEach(function(el){
+          if(!el.getAttribute('data-zc-co')){
+            el.style.opacity='0.4';el.style.pointerEvents='none';el.setAttribute('data-zc-co','1');el.title='Verify zip code first';
+          }
+        });
+      });
+    });
+    mo.observe(document.body,{childList:true,subtree:true});
   }
 
-  /* ── POPUP / OVERLAY mode ── */
+  /* ── POPUP / OVERLAY ── */
   function setupPopup(){
     if(document.getElementById('zc-popup-overlay'))return;
     addStyles();
     var ov=document.createElement('div');ov.id='zc-popup-overlay';ov.className='zc-popup-ov';
-    ov.innerHTML=
-      '<div class="zc-popup-box">'
-      +'<div class="zc-popup-head">'
-      +'<span class="zc-popup-head-icon">\\u{1F4CD}</span>'
-      +'<span class="zc-popup-head-text">${title}</span>'
-      +'<button class="zc-popup-close" id="zc-popup-x">&times;</button>'
-      +'</div>'
-      +'<div class="zc-popup-body">'
-      +'<div class="zc-popup-note">Please confirm your delivery area before adding to cart.</div>'
-      +'<div class="zc-popup-row">'
-      +'<input class="zc-popup-inp" id="zc-popup-inp" placeholder="${ph}" maxlength="12"/>'
-      +'<button class="zc-popup-btn" id="zc-popup-check">${btnLbl}</button>'
-      +'</div>'
-      +'<div class="zc-popup-res" id="zc-popup-res"></div>'
-      +'<button class="zc-popup-proceed" id="zc-popup-proceed">\\u2705 Confirmed — Continue to Cart</button>'
-      +'</div>'
-      +'</div>';
+    ov.innerHTML='<div class="zc-popup-box"><div class="zc-popup-head"><span class="zc-popup-head-icon">\u{1F4CD}</span><span class="zc-popup-head-text">${title}</span><button class="zc-popup-close" id="zc-popup-x">&times;</button></div><div class="zc-popup-body"><div class="zc-popup-note">Confirm your delivery area before adding to cart.</div><div class="zc-popup-row"><input class="zc-popup-inp" id="zc-popup-inp" placeholder="${ph}" maxlength="12"/><button class="zc-popup-btn" id="zc-popup-check">${btnLbl}</button></div><div class="zc-popup-res" id="zc-popup-res"></div><button class="zc-popup-proceed" id="zc-popup-proceed">\u2705 Confirmed — Continue to Cart</button></div></div>';
     document.body.appendChild(ov);
-
-    // Store the original click targets
     var _pendingBtn=null;
-    var _pendingEvent=null;
-
     function closePopup(){ov.classList.remove('open');_pendingBtn=null;}
     document.getElementById('zc-popup-x').onclick=closePopup;
     ov.onclick=function(e){if(e.target===ov)closePopup();};
-
-    // Check zip in popup
     document.getElementById('zc-popup-check').onclick=async function(){
       var zip=document.getElementById('zc-popup-inp').value.trim().toUpperCase();
       var out=document.getElementById('zc-popup-res');
-      var proceedBtn=document.getElementById('zc-popup-proceed');
-      if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\\u26A0 Enter a valid zip / postal code</span>';proceedBtn.style.display='none';return;}
-      out.innerHTML='<span style="color:#9ca3af">Checking\\u2026</span>';
-      proceedBtn.style.display='none';
+      var pb=document.getElementById('zc-popup-proceed');
+      if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\u26A0 Enter a valid zip</span>';pb.style.display='none';return;}
+      out.innerHTML='<span style="color:#9ca3af">Checking\u2026</span>';pb.style.display='none';
       try{
         var j=await lookupZip(zip);
-        if(!j.success){out.innerHTML='<span style="color:${errColor}">\\u26A0 '+(j.message||'Error')+'</span>';return;}
+        if(!j.success){out.innerHTML='<span style="color:${errColor}">\u26A0 '+(j.message||'Error')+'</span>';return;}
         var d=j.data;
-        if(d.result==='allow'){
-          out.innerHTML='<span style="color:${okColor}">\\u2705 '+(d.message||'${okMsg}')+'</span>';
-          proceedBtn.style.display='block';
-          window._zcZipVerified=true;
-        } else if(d.result==='block'||d.result==='deny'){
-          out.innerHTML='<span style="color:${errColor}">\\u{1F6AB} '+(d.message||'${errMsg}')+'</span>';
-          proceedBtn.style.display='none';
-          window._zcZipVerified=false;
-        } else {
-          out.innerHTML='<span style="color:#f59e0b">\\u2139\\uFE0F No delivery rule found. Please contact us.</span>';
-        }
-      }catch(e){out.innerHTML='<span style="color:${errColor}">Unable to check. Please try again.</span>';}
+        if(d.result==='allow'){out.innerHTML='<span style="color:${okColor}">\u2705 '+(d.message||'${okMsg}')+'</span>';pb.style.display='block';window._zcZipVerified=true;}
+        else if(d.result==='block'||d.result==='deny'){out.innerHTML='<span style="color:${errColor}">\u{1F6AB} '+(d.message||'${errMsg}')+'</span>';pb.style.display='none';window._zcZipVerified=false;}
+        else{out.innerHTML='<span style="color:#f59e0b">\u2139\uFE0F No rule found. Please contact us.</span>';}
+      }catch(e){out.innerHTML='<span style="color:${errColor}">Unable to check. Try again.</span>';}
     };
     document.getElementById('zc-popup-inp').onkeydown=function(e){if(e.key==='Enter')document.getElementById('zc-popup-check').click();};
-
-    // Proceed button: close popup and trigger original action
-    document.getElementById('zc-popup-proceed').onclick=function(){
-      closePopup();
-      showCart();
-      if(_pendingBtn){
-        window._zcZipVerified=true;
-        _pendingBtn.click();
-        _pendingBtn=null;
-      }
-    };
-
-    // Intercept Add-to-Cart clicks
-    function interceptCartBtn(btn){
+    document.getElementById('zc-popup-proceed').onclick=function(){closePopup();showCartBtns();if(_pendingBtn){window._zcZipVerified=true;_pendingBtn.click();_pendingBtn=null;}};
+    function interceptBtn(btn){
       btn.setAttribute('data-zc-intercepted','1');
       btn.addEventListener('click',function(e){
-        if(window._zcZipVerified)return; // already verified
+        if(window._zcZipVerified)return;
         e.preventDefault();e.stopImmediatePropagation();
         _pendingBtn=btn;
-        // Reset popup state
         document.getElementById('zc-popup-inp').value='';
         document.getElementById('zc-popup-res').innerHTML='';
         document.getElementById('zc-popup-proceed').style.display='none';
@@ -308,53 +282,37 @@ app.get("/widget.js", (req, res) => {
         document.getElementById('zc-popup-inp').focus();
       },true);
     }
-    CART_SELS.forEach(function(sel){
-      document.querySelectorAll(sel).forEach(function(btn){
-        if(!btn.getAttribute('data-zc-intercepted'))interceptCartBtn(btn);
-      });
-    });
-    // MutationObserver to catch dynamically added buttons
-    var mo=new MutationObserver(function(){
-      CART_SELS.forEach(function(sel){
-        document.querySelectorAll(sel).forEach(function(btn){
-          if(!btn.getAttribute('data-zc-intercepted'))interceptCartBtn(btn);
-        });
-      });
-    });
+    CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(b){if(!b.getAttribute('data-zc-intercepted'))interceptBtn(b);});});
+    var mo=new MutationObserver(function(){CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(b){if(!b.getAttribute('data-zc-intercepted'))interceptBtn(b);});});});
     mo.observe(document.body,{childList:true,subtree:true});
   }
 
-  /* ── Main init ── */
+  /* ── Init ── */
   function init(){
     if(PLACEMENT==='manual'){
-      // Manual: remove auto-injected, only build user-placed [data-zipcheck] elements
       document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
       if(document.getElementById('zc-cart-block')){document.getElementById('zc-cart-block').remove();}
-      var popup=document.getElementById('zc-popup-overlay');if(popup)popup.remove();
-      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i);});
+      var p=document.getElementById('zc-popup-overlay');if(p)p.remove();
+      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i,{cartPage:false});});
       return;
     }
     if(PLACEMENT==='cart'){
-      // Cart mode: clean up others, inject on cart page
       document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
-      var popup=document.getElementById('zc-popup-overlay');if(popup)popup.remove();
-      // Also build any manually placed widgets
-      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i);});
+      var p=document.getElementById('zc-popup-overlay');if(p)p.remove();
+      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i,{cartPage:false});});
       cartPagePlace();
       return;
     }
     if(PLACEMENT==='popup'){
-      // Popup mode: remove inline auto widgets, intercept cart buttons with popup
       document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
       if(document.getElementById('zc-cart-block')){document.getElementById('zc-cart-block').remove();}
       setupPopup();
       return;
     }
-    // Default: AUTO placement
-    document.querySelectorAll('[data-zipcheck]').forEach(function(el,i){build(el,i);});
+    document.querySelectorAll('[data-zipcheck]').forEach(function(el,i){build(el,i,{cartPage:false});});
     autoPlace();
   }
-  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
+    if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
 })();`);
 });
 
@@ -878,6 +836,7 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
     <div class="nav-section-label">Account</div>
     <button class="nav-btn" onclick="nav(this,'pricing')"><span class="nav-icon">💳</span>Pricing Plans</button>
     <button class="nav-btn" onclick="nav(this,'faq')"><span class="nav-icon">❓</span>FAQ</button>
+    <button class="nav-btn" onclick="nav(this,'helpcenter')"><span class="nav-icon">📚</span>Help Center</button>
   </div>
   <div class="sidebar-footer">
     <div class="app-toggle-row" onclick="document.getElementById('app-chk').click();event.stopPropagation()">
@@ -1264,6 +1223,348 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
   <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Can I customize the widget design?</span><span class="faq-chevron">▼</span></button><div class="faq-a">Yes, fully. Use the Settings tab for built-in controls: button colors, success/error colors, all text labels, and placeholder copy. For advanced styling, go to Custom CSS and write your own CSS using the provided selectors. All changes sync to your storefront when saved.</div></div>
   <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>What happens if a zip code isn't in my list?</span><span class="faq-chevron">▼</span></button><div class="faq-a">If a customer enters a zip code with no matching rule, the widget shows a neutral message: "No delivery rule found. Please contact us." — so customers are never left confused. You can add rules at any time or use wildcard patterns (Starter+) to cover entire zip code ranges like 100* for 10000–10099.</div></div>
   <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>How do I temporarily deactivate the app?</span><span class="faq-chevron">▼</span></button><div class="faq-a">Use the App Active toggle at the bottom of the sidebar. When toggled off, the widget immediately stops loading on your storefront — no code changes needed. Toggle it back on to re-enable. All your rules, settings, and custom CSS are preserved.</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HELP CENTER PAGE
+════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-helpcenter">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📚 Help Center</div>
+      <div class="page-sub">Step-by-step guides to install and customize ZipCheck on your Shopify store.</div>
+    </div>
+  </div>
+
+  <!-- Quick Nav Pills -->
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px">
+    <a href="#hc-install" onclick="document.getElementById('hc-install').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--green-lt);border:1.5px solid var(--green-md);border-radius:20px;font-size:13px;font-weight:700;color:var(--green-xdk);text-decoration:none;cursor:pointer">1. Install App</a>
+    <a href="#hc-embed" onclick="document.getElementById('hc-embed').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--g50);border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:700;color:var(--g700);text-decoration:none;cursor:pointer">2. Add to Theme</a>
+    <a href="#hc-placement" onclick="document.getElementById('hc-placement').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--g50);border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:700;color:var(--g700);text-decoration:none;cursor:pointer">3. Placement Modes</a>
+    <a href="#hc-rules" onclick="document.getElementById('hc-rules').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--g50);border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:700;color:var(--g700);text-decoration:none;cursor:pointer">4. ZIP Rules</a>
+    <a href="#hc-settings" onclick="document.getElementById('hc-settings').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--g50);border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:700;color:var(--g700);text-decoration:none;cursor:pointer">5. Customize Widget</a>
+    <a href="#hc-css" onclick="document.getElementById('hc-css').scrollIntoView({behavior:'smooth'});return false;" style="padding:8px 18px;background:var(--g50);border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:700;color:var(--g700);text-decoration:none;cursor:pointer">6. Custom CSS</a>
+  </div>
+
+  <!-- ── STEP 1: Install ── -->
+  <div id="hc-install" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,var(--green-lt),#e6faf3);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:var(--green);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">1</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Install ZipCheck on Your Store</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Connect the app to your Shopify store in 2 minutes</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+        <div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden">
+          <div style="background:var(--g50);padding:12px 16px;border-bottom:1px solid var(--g200)">
+            <span style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em">Step 1a</span>
+            <div style="font-weight:700;color:var(--g800);margin-top:2px">Open Shopify App Store</div>
+          </div>
+          <div style="padding:16px">
+            <div style="background:var(--g900);border-radius:10px;padding:32px 16px;text-align:center;margin-bottom:12px">
+              <div style="font-size:36px;margin-bottom:8px">🏪</div>
+              <div style="color:#fff;font-size:13px;font-weight:600">apps.shopify.com</div>
+              <div style="color:var(--g400);font-size:12px;margin-top:4px">Search: "ZipCheck"</div>
+            </div>
+            <p style="font-size:13px;color:var(--g600);line-height:1.6">Go to your Shopify Admin → <strong>Apps</strong> → <strong>Visit Shopify App Store</strong>. Search for <strong>ZipCheck</strong> and click the app listing.</p>
+          </div>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden">
+          <div style="background:var(--g50);padding:12px 16px;border-bottom:1px solid var(--g200)">
+            <span style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em">Step 1b</span>
+            <div style="font-weight:700;color:var(--g800);margin-top:2px">Click "Add App"</div>
+          </div>
+          <div style="padding:16px">
+            <div style="background:linear-gradient(135deg,#008060,#00a870);border-radius:10px;padding:32px 16px;text-align:center;margin-bottom:12px">
+              <div style="font-size:36px;margin-bottom:8px">✅</div>
+              <div style="color:#fff;font-size:14px;font-weight:700;background:rgba(255,255,255,.2);padding:8px 20px;border-radius:8px;display:inline-block">Add app</div>
+            </div>
+            <p style="font-size:13px;color:var(--g600);line-height:1.6">Click <strong>Add app</strong> on the listing page. Shopify will ask you to review permissions — click <strong>Install app</strong> to confirm.</p>
+          </div>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden">
+          <div style="background:var(--g50);padding:12px 16px;border-bottom:1px solid var(--g200)">
+            <span style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em">Step 1c</span>
+            <div style="font-weight:700;color:var(--g800);margin-top:2px">You're In!</div>
+          </div>
+          <div style="padding:16px">
+            <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);border-radius:10px;padding:32px 16px;text-align:center;margin-bottom:12px">
+              <div style="font-size:36px;margin-bottom:8px">📍</div>
+              <div style="color:#fff;font-size:13px;font-weight:600">ZipCheck Dashboard</div>
+              <div style="color:rgba(255,255,255,.7);font-size:12px;margin-top:4px">Admin Panel Loaded</div>
+            </div>
+            <p style="font-size:13px;color:var(--g600);line-height:1.6">You'll land on this dashboard. Your free plan is active immediately with up to 50 zip rules. No credit card required to start.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Add to Theme ── -->
+  <div id="hc-embed" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:#3b82f6;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0">2</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Add the Widget to Your Theme</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Embed the ZipCheck script into your Shopify theme</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <div style="background:#fffbeb;border:1.5px solid #fde047;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">💡</span>
+        <p style="font-size:13px;color:#92400e;line-height:1.6;margin:0"><strong>Two ways to add the widget:</strong> Option A uses Shopify's App Embed (easiest, no code). Option B uses the embed code for manual placement inside theme files.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+        <div style="border:2px solid var(--green);border-radius:12px;overflow:hidden">
+          <div style="background:var(--green-lt);padding:12px 16px;border-bottom:1.5px solid var(--green-md);display:flex;align-items:center;gap:8px">
+            <span style="background:var(--green);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px">RECOMMENDED</span>
+            <div style="font-weight:700;color:var(--green-xdk)">Option A — App Embed (No Code)</div>
+          </div>
+          <div style="padding:18px">
+            <ol style="font-size:13px;color:var(--g700);line-height:2;padding-left:18px;margin:0">
+              <li>In Shopify Admin, go to <strong>Online Store → Themes</strong></li>
+              <li>Click <strong>Customize</strong> on your active theme</li>
+              <li>In the left panel, click <strong>App embeds</strong> (puzzle icon 🧩)</li>
+              <li>Find <strong>ZipCheck Widget</strong> and toggle it <strong>ON</strong></li>
+              <li>Click <strong>Save</strong> — widget is now live!</li>
+            </ol>
+            <div style="background:var(--g900);border-radius:10px;padding:20px;margin-top:16px;text-align:center">
+              <div style="color:var(--g400);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Shopify Theme Editor</div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--g800);padding:10px 14px;border-radius:8px">
+                <span style="font-size:18px">🧩</span>
+                <span style="color:#fff;font-size:13px;font-weight:600;flex:1;text-align:left">App embeds</span>
+                <span style="font-size:10px;color:var(--g400)">▶</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;background:var(--g800);padding:10px 14px;border-radius:8px;margin-top:6px">
+                <span style="font-size:18px">📍</span>
+                <span style="color:#fff;font-size:13px;font-weight:600;flex:1;text-align:left">ZipCheck Widget</span>
+                <div style="width:36px;height:20px;background:#00a870;border-radius:10px;position:relative"><div style="position:absolute;right:3px;top:3px;width:14px;height:14px;background:#fff;border-radius:50%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;overflow:hidden">
+          <div style="background:var(--g50);padding:12px 16px;border-bottom:1px solid var(--g200)">
+            <div style="font-weight:700;color:var(--g800)">Option B — Embed Code (Manual)</div>
+          </div>
+          <div style="padding:18px">
+            <ol style="font-size:13px;color:var(--g700);line-height:2;padding-left:18px;margin:0 0 16px 0">
+              <li>In this dashboard, go to <strong>Embed / Shortcode</strong> in the sidebar</li>
+              <li>Copy the <strong>Script Tag</strong> code shown there</li>
+              <li>In Shopify Admin → <strong>Online Store → Themes → Edit Code</strong></li>
+              <li>Open <code style="background:var(--g100);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">theme.liquid</code></li>
+              <li>Paste the script just before the closing <code style="background:var(--g100);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px">&lt;/body&gt;</code> tag</li>
+              <li>Click <strong>Save</strong></li>
+            </ol>
+            <div style="background:var(--g900);border-radius:10px;padding:16px;font-family:monospace;font-size:12px">
+              <div style="color:#6ee7b7">&lt;!-- ZipCheck Widget --&gt;</div>
+              <div style="color:#93c5fd">&lt;script</div>
+              <div style="color:#fcd34d;padding-left:16px">src="https://zipcheck.app/widget.js"</div>
+              <div style="color:#fcd34d;padding-left:16px">data-shop="your-store"</div>
+              <div style="color:#93c5fd">&gt;&lt;/script&gt;</div>
+              <div style="color:#6b7280;margin-top:6px">&lt;/body&gt;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Placement Modes ── -->
+  <div id="hc-placement" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,#fdf4ff,#f3e8ff);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:#9333ea;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0">3</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Choose a Placement Mode</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Control where and how the zip check widget appears</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <p style="font-size:14px;color:var(--g600);line-height:1.7;margin-bottom:20px">Go to <strong>Settings → Placement Mode</strong> in the sidebar. Choose one of four modes:</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+        <div style="border:1.5px solid #d1fae5;border-radius:12px;padding:16px;background:#f0fdf4">
+          <div style="font-size:24px;margin-bottom:8px">⚡</div>
+          <div style="font-weight:800;color:var(--g900);margin-bottom:6px">Auto Placement</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Widget auto-injects above the Add to Cart button. <strong>Add to Cart is hidden</strong> until zip is validated. Works on all themes — no code needed.</p>
+          <div style="margin-top:10px;font-size:12px;background:#dcfce7;color:#166534;padding:6px 10px;border-radius:6px;font-weight:600">✅ Recommended for most stores</div>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;padding:16px;background:var(--g50)">
+          <div style="font-size:24px;margin-bottom:8px">✏️</div>
+          <div style="font-weight:800;color:var(--g900);margin-bottom:6px">Manual Placement</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Auto inject is disabled. You place <code style="background:var(--g100);padding:1px 4px;border-radius:4px;font-family:monospace;font-size:11px">[data-zipcheck]</code> divs anywhere in your theme to control exact positioning.</p>
+        </div>
+        <div style="border:1.5px solid #fef9c3;border-radius:12px;padding:16px;background:#fffbeb">
+          <div style="font-size:24px;margin-bottom:8px">🛒</div>
+          <div style="font-weight:800;color:var(--g900);margin-bottom:6px">Cart Page Block</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Widget appears on the cart page before checkout. <strong>Checkout button is hidden</strong> until zip is validated. Add to Cart on product pages works normally.</p>
+        </div>
+        <div style="border:1.5px solid #fce7f3;border-radius:12px;padding:16px;background:#fdf2f8">
+          <div style="font-size:24px;margin-bottom:8px">💬</div>
+          <div style="font-weight:800;color:var(--g900);margin-bottom:6px">Popup / Overlay</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">A modal popup appears when customers click Add to Cart. They must verify their zip before proceeding. Available on <strong>Starter+ plan</strong>.</p>
+        </div>
+      </div>
+      <div style="margin-top:20px;background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;padding:16px">
+        <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:10px">📋 How to change placement:</div>
+        <ol style="font-size:13px;color:var(--g600);line-height:2;padding-left:18px;margin:0">
+          <li>Click <strong>Settings</strong> in the left sidebar</li>
+          <li>Scroll to the <strong>Placement Mode</strong> section</li>
+          <li>Click on the mode you want to activate</li>
+          <li>Click <strong>Save Placement</strong> — changes go live instantly</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: ZIP Rules ── -->
+  <div id="hc-rules" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,#fff7ed,#fed7aa);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:#ea580c;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0">4</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Set Up ZIP Code Rules</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Define which zip codes can and cannot receive delivery</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:20px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:12px">➕ Add a Single Rule</div>
+          <ol style="font-size:13px;color:var(--g600);line-height:2;padding-left:18px;margin:0">
+            <li>Click <strong>Zip Rules</strong> in the sidebar</li>
+            <li>In the <strong>Add Rule</strong> form at the top, enter a zip code</li>
+            <li>Set the type: <span style="color:#008060;font-weight:700">Allow</span> or <span style="color:#d72c0d;font-weight:700">Deny</span></li>
+            <li>Optionally add a custom message (e.g. "Delivery available in 3–5 days")</li>
+            <li>Click <strong>Add Rule</strong> — it's live immediately</li>
+          </ol>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:12px">📦 Bulk Import (Starter+)</div>
+          <ol style="font-size:13px;color:var(--g600);line-height:2;padding-left:18px;margin:0">
+            <li>Prepare a <strong>.csv</strong> or <strong>.xlsx</strong> file</li>
+            <li>Required column: <code style="background:var(--g100);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px">ZipCode</code></li>
+            <li>Optional columns: <code style="background:var(--g100);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px">Type</code>, <code style="background:var(--g100);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:11px">Message</code></li>
+            <li>Click <strong>Import</strong> button on the Zip Rules page</li>
+            <li>Drag & drop your file or click to browse</li>
+            <li>Preview and confirm the import</li>
+          </ol>
+        </div>
+      </div>
+      <div style="background:var(--g900);border-radius:12px;padding:20px">
+        <div style="color:var(--g400);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Example CSV Format</div>
+        <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:13px">
+          <tr style="border-bottom:1px solid var(--g700)">
+            <td style="padding:8px 12px;color:#93c5fd;font-weight:700">ZipCode</td>
+            <td style="padding:8px 12px;color:#93c5fd;font-weight:700">Type</td>
+            <td style="padding:8px 12px;color:#93c5fd;font-weight:700">Message</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--g800)">
+            <td style="padding:8px 12px;color:#6ee7b7">10001</td>
+            <td style="padding:8px 12px;color:#6ee7b7">allow</td>
+            <td style="padding:8px 12px;color:#9ca3af">Delivery in 2–3 days</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--g800)">
+            <td style="padding:8px 12px;color:#6ee7b7">10002</td>
+            <td style="padding:8px 12px;color:#6ee7b7">allow</td>
+            <td style="padding:8px 12px;color:#9ca3af">Same day delivery</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;color:#fca5a5">90210</td>
+            <td style="padding:8px 12px;color:#fca5a5">deny</td>
+            <td style="padding:8px 12px;color:#9ca3af">Outside delivery zone</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 5: Customize Widget ── -->
+  <div id="hc-settings" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0">5</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Customize the Widget</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Change colors, labels, and messages to match your brand</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <p style="font-size:14px;color:var(--g600);margin-bottom:20px;line-height:1.7">All customization is done in <strong>Settings → Widget Appearance</strong>. Every change previews instantly and goes live when you save.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        <div style="border:1.5px solid var(--g200);border-radius:12px;padding:16px">
+          <div style="font-size:20px;margin-bottom:8px">🎨</div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:6px">Button Color</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Set the Check button color to match your store's primary color. Use any hex value.</p>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;padding:16px">
+          <div style="font-size:20px;margin-bottom:8px">✅</div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:6px">Success / Error Colors</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Customize the green success and red error message colors to fit your brand palette.</p>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;padding:16px">
+          <div style="font-size:20px;margin-bottom:8px">🏷️</div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:6px">Widget Title & Labels</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Change the widget heading (e.g. "Check Delivery"), placeholder text, and button label text.</p>
+        </div>
+        <div style="border:1.5px solid var(--g200);border-radius:12px;padding:16px">
+          <div style="font-size:20px;margin-bottom:8px">💬</div>
+          <div style="font-weight:700;font-size:14px;color:var(--g800);margin-bottom:6px">Success & Error Messages</div>
+          <p style="font-size:13px;color:var(--g600);line-height:1.6;margin:0">Set the message shown when delivery is available or not available in a customer's area.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 6: Custom CSS ── -->
+  <div id="hc-css" style="background:#fff;border:1.5px solid var(--g200);border-radius:16px;overflow:hidden;margin-bottom:24px;box-shadow:var(--shadow-sm)">
+    <div style="background:linear-gradient(135deg,#f8fafc,#e2e8f0);padding:20px 24px;border-bottom:1.5px solid var(--g200);display:flex;align-items:center;gap:14px">
+      <div style="width:36px;height:36px;background:#475569;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;font-weight:800;flex-shrink:0">6</div>
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--g900)">Advanced: Custom CSS</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px">Fine-tune the widget appearance with your own CSS rules</div>
+      </div>
+    </div>
+    <div style="padding:24px">
+      <p style="font-size:14px;color:var(--g600);margin-bottom:20px;line-height:1.7">Go to <strong>Custom CSS</strong> in the sidebar. Write CSS rules targeting the widget's built-in selectors. Your styles are injected into the storefront automatically.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px">
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--g700);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Key CSS Selectors</div>
+          <div style="background:var(--g900);border-radius:10px;padding:16px;font-family:monospace;font-size:12px;line-height:2">
+            <div><span style="color:#93c5fd">[data-zipcheck]</span> <span style="color:var(--g400)">/* Widget container */</span></div>
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-wrap</span> <span style="color:var(--g400)">/* Inner box */</span></div>
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-inp</span> <span style="color:var(--g400)">/* Text input */</span></div>
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-btn</span> <span style="color:var(--g400)">/* Check button */</span></div>
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-res</span> <span style="color:var(--g400)">/* Result message */</span></div>
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-lbl</span> <span style="color:var(--g400)">/* Widget label */</span></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--g700);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Example Styles</div>
+          <div style="background:var(--g900);border-radius:10px;padding:16px;font-family:monospace;font-size:12px;line-height:2">
+            <div><span style="color:#93c5fd">[data-zipcheck] .zc-wrap</span> <span style="color:#fff">{</span></div>
+            <div style="padding-left:16px"><span style="color:#fcd34d">border-radius</span><span style="color:#fff">:</span> <span style="color:#6ee7b7">0px</span><span style="color:#fff">;</span></div>
+            <div style="padding-left:16px"><span style="color:#fcd34d">box-shadow</span><span style="color:#fff">:</span> <span style="color:#6ee7b7">none</span><span style="color:#fff">;</span></div>
+            <div><span style="color:#fff">}</span></div>
+            <div style="margin-top:4px"><span style="color:#93c5fd">[data-zipcheck] .zc-btn</span> <span style="color:#fff">{</span></div>
+            <div style="padding-left:16px"><span style="color:#fcd34d">border-radius</span><span style="color:#fff">:</span> <span style="color:#6ee7b7">4px</span><span style="color:#fff">;</span></div>
+            <div style="padding-left:16px"><span style="color:#fcd34d">font-size</span><span style="color:#fff">:</span> <span style="color:#6ee7b7">16px</span><span style="color:#fff">;</span></div>
+            <div><span style="color:#fff">}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Support Footer ── -->
+  <div style="background:linear-gradient(135deg,var(--green-xdk),var(--green-dk));border-radius:16px;padding:28px;text-align:center;color:#fff">
+    <div style="font-size:28px;margin-bottom:12px">🙋</div>
+    <div style="font-size:18px;font-weight:800;margin-bottom:8px">Still need help?</div>
+    <p style="font-size:14px;opacity:.85;margin-bottom:20px;line-height:1.6">Our support team is ready to help you set up and configure ZipCheck for your store.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="mailto:support@zipcheck.app" style="background:rgba(255,255,255,.15);color:#fff;text-decoration:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:14px;border:1.5px solid rgba(255,255,255,.3)">📧 Email Support</a>
+      <a href="https://docs.zipcheck.app" target="_blank" style="background:#fff;color:var(--green-xdk);text-decoration:none;padding:10px 22px;border-radius:10px;font-weight:700;font-size:14px">📖 Full Docs</a>
+    </div>
+  </div>
 </div>
 
 </main>
