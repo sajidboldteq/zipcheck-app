@@ -118,15 +118,47 @@ app.get("/widget.js", (req, res) => {
   var SHOW_ON_VALID=${showOnValid};
   var _css='${safeCss}';
   var CART_SELS=['[name=add]','[data-testid=add-to-cart]','.product-form__submit','[data-action=add-to-cart]','#AddToCart','#add-to-cart-btn','.shopify-payment-button__button','[data-testid=BuyNow]','[data-action=buy-now]','.btn-product-form'];
+
+  /* ── Shared styles ── */
   function addStyles(){
     if(document.getElementById('zc-styles'))return;
     var st=document.createElement('style');st.id='zc-styles';
-    st.textContent='[data-zipcheck]{margin:14px 0}[data-zipcheck] .zc-wrap{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:18px;border:1.5px solid #e4e5e7;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)}[data-zipcheck] .zc-lbl{display:block;font-weight:700;font-size:14px;margin-bottom:12px;color:#1a1a1a}[data-zipcheck] .zc-row{display:flex;gap:8px;flex-wrap:wrap}[data-zipcheck] .zc-inp{flex:1;min-width:120px;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;outline:none;font-family:inherit;transition:border-color .2s,box-shadow .2s}[data-zipcheck] .zc-inp:focus{border-color:${btnColor};box-shadow:0 0 0 3px ${btnColor}22}[data-zipcheck] .zc-btn{padding:10px 22px;background:${btnColor};color:${btnTxt};border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;white-space:nowrap}[data-zipcheck] .zc-btn:hover{opacity:.88;transform:translateY(-1px)}[data-zipcheck] .zc-res{margin-top:10px;font-size:14px;min-height:20px;font-weight:500;line-height:1.5}';
+    st.textContent='[data-zipcheck]{margin:14px 0}[data-zipcheck] .zc-wrap{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:18px;border:1.5px solid #e4e5e7;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)}[data-zipcheck] .zc-lbl{display:block;font-weight:700;font-size:14px;margin-bottom:12px;color:#1a1a1a}[data-zipcheck] .zc-row{display:flex;gap:8px;flex-wrap:wrap}[data-zipcheck] .zc-inp{flex:1;min-width:120px;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;outline:none;font-family:inherit;transition:border-color .2s,box-shadow .2s}[data-zipcheck] .zc-inp:focus{border-color:${btnColor};box-shadow:0 0 0 3px ${btnColor}22}[data-zipcheck] .zc-btn{padding:10px 22px;background:${btnColor};color:${btnTxt};border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;transition:all .15s;white-space:nowrap}[data-zipcheck] .zc-btn:hover{opacity:.88;transform:translateY(-1px)}[data-zipcheck] .zc-res{margin-top:10px;font-size:14px;min-height:20px;font-weight:500;line-height:1.5}'
+    +'.zc-popup-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}'
+    +'.zc-popup-ov.open{display:flex}'
+    +'.zc-popup-box{background:#fff;border-radius:20px;width:min(440px,95vw);overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.3)}'
+    +'.zc-popup-head{background:linear-gradient(135deg,#065f46,#059669);padding:22px 24px;display:flex;align-items:center;gap:12px}'
+    +'.zc-popup-head-icon{font-size:28px}'
+    +'.zc-popup-head-text{color:#fff;font-size:16px;font-weight:800;flex:1}'
+    +'.zc-popup-close{color:rgba(255,255,255,.7);background:none;border:none;font-size:22px;cursor:pointer;line-height:1;padding:0;transition:color .15s}'
+    +'.zc-popup-close:hover{color:#fff}'
+    +'.zc-popup-body{padding:24px}'
+    +'.zc-popup-note{font-size:13px;color:#6b7280;margin-bottom:16px;line-height:1.5}'
+    +'.zc-popup-row{display:flex;gap:8px;flex-wrap:wrap}'
+    +'.zc-popup-inp{flex:1;min-width:120px;padding:11px 14px;border:1.5px solid #d1d5db;border-radius:9px;font-size:15px;outline:none;font-family:inherit;transition:border-color .2s,box-shadow .2s}'
+    +'.zc-popup-inp:focus{border-color:${btnColor};box-shadow:0 0 0 3px ${btnColor}22}'
+    +'.zc-popup-btn{padding:11px 22px;background:${btnColor};color:${btnTxt};border:none;border-radius:9px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;transition:all .15s}'
+    +'.zc-popup-btn:hover{opacity:.88;transform:translateY(-1px)}'
+    +'.zc-popup-res{margin-top:12px;font-size:14px;min-height:20px;font-weight:500;line-height:1.5}'
+    +'.zc-popup-proceed{display:none;margin-top:14px;width:100%;padding:12px;background:linear-gradient(135deg,#065f46,#059669);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s}'
+    +'.zc-popup-proceed:hover{opacity:.9;transform:translateY(-1px)}'
+    +'.zc-cart-notice{margin:0;padding:14px 18px;background:linear-gradient(135deg,#fffbeb,#fef9c3);border-top:2px solid #fde047;font-size:13px;color:#854d0e;font-weight:600;display:flex;align-items:center;gap:8px}';
     document.head.appendChild(st);
     if(_css){var cu=document.createElement('style');cu.id='zc-custom';cu.textContent=_css;document.head.appendChild(cu);}
   }
+
+  /* ── Cart button hide/show ── */
   function hideCart(){if(!HIDE_CART)return;CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='0';el.style.pointerEvents='none';el.setAttribute('data-zc-h','1');});});}
   function showCart(){CART_SELS.forEach(function(sel){document.querySelectorAll(sel).forEach(function(el){el.style.opacity='';el.style.pointerEvents='';el.removeAttribute('data-zc-h');});});}
+
+  /* ── Zip lookup helper ── */
+  async function lookupZip(zip){
+    var r=await fetch(API+'/api/check/lookup/'+encodeURIComponent(zip));
+    var j=await r.json();
+    return j;
+  }
+
+  /* ── Build inline widget ── */
   function build(el,i){
     addStyles();
     var label=el.getAttribute('data-label')||'${title}';
@@ -141,8 +173,7 @@ app.get("/widget.js", (req, res) => {
       if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\\u26A0 Enter a valid zip / postal code</span>';return;}
       out.innerHTML='<span style="color:#9ca3af">Checking\\u2026</span>';
       try{
-        var r=await fetch(API+'/api/check/lookup/'+encodeURIComponent(zip));
-        var j=await r.json();
+        var j=await lookupZip(zip);
         if(!j.success){out.innerHTML='<span style="color:${errColor}">\\u26A0 '+(j.message||'Error')+'</span>';return;}
         var d=j.data;
         if(d.result==='allow'){out.innerHTML='<span style="color:${okColor}">\\u2705 '+(d.message||'${okMsg}')+'</span>';if(SHOW_ON_VALID)showCart();}
@@ -153,9 +184,10 @@ app.get("/widget.js", (req, res) => {
     document.getElementById(bi).onclick=chk;
     document.getElementById(ii).onkeydown=function(e){if(e.key==='Enter')chk();};
   }
+
+  /* ── AUTO placement: inject above Add-to-Cart ── */
   function autoPlace(){
-    if(PLACEMENT!=='auto')return;
-    if(document.querySelector('[data-zipcheck]'))return;
+    if(document.querySelector('[data-zc-auto]'))return;
     var selectors=['.product-form__submit','[name=add]','#AddToCart','.shopify-payment-button__button','[data-testid=add-to-cart]','.btn-product-form','[data-action=add-to-cart]'];
     var target=null;
     for(var i=0;i<selectors.length;i++){target=document.querySelector(selectors[i]);if(target)break;}
@@ -165,13 +197,160 @@ app.get("/widget.js", (req, res) => {
     parent.insertBefore(wrap,target);
     build(wrap,999);
   }
+
+  /* ── CART PAGE placement: inject widget on cart page ── */
+  function cartPagePlace(){
+    if(document.getElementById('zc-cart-block'))return;
+    // Detect cart page by URL or form
+    var isCart=window.location.pathname.indexOf('/cart')!==-1||document.querySelector('form[action="/cart"]')||document.querySelector('[data-cart-form]');
+    if(!isCart)return;
+    addStyles();
+    var wrap=document.createElement('div');wrap.id='zc-cart-block';wrap.setAttribute('data-zipcheck','');
+    wrap.setAttribute('data-label','${title}');
+    // Try to insert before checkout button
+    var checkoutBtn=document.querySelector('[name=checkout]')||document.querySelector('.cart__checkout-button')||document.querySelector('[data-testid=checkout-btn]')||document.querySelector('button[name=checkout]');
+    if(checkoutBtn){
+      var parent=checkoutBtn.closest('form')||checkoutBtn.parentNode;
+      parent.insertBefore(wrap,checkoutBtn);
+    } else {
+      // Fallback: append to body prominently
+      document.body.appendChild(wrap);
+    }
+    build(wrap,888);
+    // Add a notice below cart widget
+    var notice=document.createElement('div');notice.className='zc-cart-notice';
+    notice.innerHTML='\\u{1F4CD} Please verify your delivery zip code before proceeding to checkout.';
+    wrap.parentNode.insertBefore(notice,wrap.nextSibling);
+  }
+
+  /* ── POPUP / OVERLAY mode ── */
+  function setupPopup(){
+    if(document.getElementById('zc-popup-overlay'))return;
+    addStyles();
+    var ov=document.createElement('div');ov.id='zc-popup-overlay';ov.className='zc-popup-ov';
+    ov.innerHTML=
+      '<div class="zc-popup-box">'
+      +'<div class="zc-popup-head">'
+      +'<span class="zc-popup-head-icon">\\u{1F4CD}</span>'
+      +'<span class="zc-popup-head-text">${title}</span>'
+      +'<button class="zc-popup-close" id="zc-popup-x">&times;</button>'
+      +'</div>'
+      +'<div class="zc-popup-body">'
+      +'<div class="zc-popup-note">Please confirm your delivery area before adding to cart.</div>'
+      +'<div class="zc-popup-row">'
+      +'<input class="zc-popup-inp" id="zc-popup-inp" placeholder="${ph}" maxlength="12"/>'
+      +'<button class="zc-popup-btn" id="zc-popup-check">${btnLbl}</button>'
+      +'</div>'
+      +'<div class="zc-popup-res" id="zc-popup-res"></div>'
+      +'<button class="zc-popup-proceed" id="zc-popup-proceed">\\u2705 Confirmed — Continue to Cart</button>'
+      +'</div>'
+      +'</div>';
+    document.body.appendChild(ov);
+
+    // Store the original click targets
+    var _pendingBtn=null;
+    var _pendingEvent=null;
+
+    function closePopup(){ov.classList.remove('open');_pendingBtn=null;}
+    document.getElementById('zc-popup-x').onclick=closePopup;
+    ov.onclick=function(e){if(e.target===ov)closePopup();};
+
+    // Check zip in popup
+    document.getElementById('zc-popup-check').onclick=async function(){
+      var zip=document.getElementById('zc-popup-inp').value.trim().toUpperCase();
+      var out=document.getElementById('zc-popup-res');
+      var proceedBtn=document.getElementById('zc-popup-proceed');
+      if(!zip||zip.length<4){out.innerHTML='<span style="color:${errColor}">\\u26A0 Enter a valid zip / postal code</span>';proceedBtn.style.display='none';return;}
+      out.innerHTML='<span style="color:#9ca3af">Checking\\u2026</span>';
+      proceedBtn.style.display='none';
+      try{
+        var j=await lookupZip(zip);
+        if(!j.success){out.innerHTML='<span style="color:${errColor}">\\u26A0 '+(j.message||'Error')+'</span>';return;}
+        var d=j.data;
+        if(d.result==='allow'){
+          out.innerHTML='<span style="color:${okColor}">\\u2705 '+(d.message||'${okMsg}')+'</span>';
+          proceedBtn.style.display='block';
+          window._zcZipVerified=true;
+        } else if(d.result==='block'||d.result==='deny'){
+          out.innerHTML='<span style="color:${errColor}">\\u{1F6AB} '+(d.message||'${errMsg}')+'</span>';
+          proceedBtn.style.display='none';
+          window._zcZipVerified=false;
+        } else {
+          out.innerHTML='<span style="color:#f59e0b">\\u2139\\uFE0F No delivery rule found. Please contact us.</span>';
+        }
+      }catch(e){out.innerHTML='<span style="color:${errColor}">Unable to check. Please try again.</span>';}
+    };
+    document.getElementById('zc-popup-inp').onkeydown=function(e){if(e.key==='Enter')document.getElementById('zc-popup-check').click();};
+
+    // Proceed button: close popup and trigger original action
+    document.getElementById('zc-popup-proceed').onclick=function(){
+      closePopup();
+      showCart();
+      if(_pendingBtn){
+        window._zcZipVerified=true;
+        _pendingBtn.click();
+        _pendingBtn=null;
+      }
+    };
+
+    // Intercept Add-to-Cart clicks
+    function interceptCartBtn(btn){
+      btn.setAttribute('data-zc-intercepted','1');
+      btn.addEventListener('click',function(e){
+        if(window._zcZipVerified)return; // already verified
+        e.preventDefault();e.stopImmediatePropagation();
+        _pendingBtn=btn;
+        // Reset popup state
+        document.getElementById('zc-popup-inp').value='';
+        document.getElementById('zc-popup-res').innerHTML='';
+        document.getElementById('zc-popup-proceed').style.display='none';
+        ov.classList.add('open');
+        document.getElementById('zc-popup-inp').focus();
+      },true);
+    }
+    CART_SELS.forEach(function(sel){
+      document.querySelectorAll(sel).forEach(function(btn){
+        if(!btn.getAttribute('data-zc-intercepted'))interceptCartBtn(btn);
+      });
+    });
+    // MutationObserver to catch dynamically added buttons
+    var mo=new MutationObserver(function(){
+      CART_SELS.forEach(function(sel){
+        document.querySelectorAll(sel).forEach(function(btn){
+          if(!btn.getAttribute('data-zc-intercepted'))interceptCartBtn(btn);
+        });
+      });
+    });
+    mo.observe(document.body,{childList:true,subtree:true});
+  }
+
+  /* ── Main init ── */
   function init(){
     if(PLACEMENT==='manual'){
-      // In manual mode: remove any previously auto-inserted widgets, only build manually placed ones
+      // Manual: remove auto-injected, only build user-placed [data-zipcheck] elements
       document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
+      if(document.getElementById('zc-cart-block')){document.getElementById('zc-cart-block').remove();}
+      var popup=document.getElementById('zc-popup-overlay');if(popup)popup.remove();
       document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i);});
       return;
     }
+    if(PLACEMENT==='cart'){
+      // Cart mode: clean up others, inject on cart page
+      document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
+      var popup=document.getElementById('zc-popup-overlay');if(popup)popup.remove();
+      // Also build any manually placed widgets
+      document.querySelectorAll('[data-zipcheck]:not([data-zc-auto])').forEach(function(el,i){build(el,i);});
+      cartPagePlace();
+      return;
+    }
+    if(PLACEMENT==='popup'){
+      // Popup mode: remove inline auto widgets, intercept cart buttons with popup
+      document.querySelectorAll('[data-zc-auto]').forEach(function(el){el.remove();});
+      if(document.getElementById('zc-cart-block')){document.getElementById('zc-cart-block').remove();}
+      setupPopup();
+      return;
+    }
+    // Default: AUTO placement
     document.querySelectorAll('[data-zipcheck]').forEach(function(el,i){build(el,i);});
     autoPlace();
   }
@@ -185,6 +364,24 @@ app.get("/embed", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+
+// ── Test Email Route ───────────────────────────────────────────────────────────
+app.get("/api/test-email", async (req, res) => {
+  const to = req.query.to || ADMIN_EMAIL || NOTIFY_FROM_EMAIL;
+  if (!to) return res.status(400).json({ error: "No recipient — set ADMIN_EMAIL env var or pass ?to=your@email.com" });
+  if (!SENDGRID_API_KEY) return res.status(400).json({ error: "SENDGRID_API_KEY env var not set" });
+  try {
+    const trialEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    await sendEmail({
+      to,
+      subject: "✅ ZipCheck Email Test — SendGrid is working!",
+      html: buildSubscriptionEmailHTML({ name: "Test User", plan: "starter", billing: "monthly", trialEnd })
+    });
+    res.json({ success: true, message: `Test email sent to ${to}`, from: NOTIFY_FROM_EMAIL });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── Stripe ─────────────────────────────────────────────────────────────────────
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
@@ -213,7 +410,81 @@ function stripeRequest(method, path, data) {
   });
 }
 
-// Create subscription with 3-day trial
+// ── Email notification helper ──────────────────────────────────────────────────
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+const NOTIFY_FROM_EMAIL = process.env.NOTIFY_FROM_EMAIL || "noreply@zipcheck.app";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
+
+async function sendEmail({ to, subject, html }) {
+  if (!SENDGRID_API_KEY) {
+    console.log(`[Email] No SENDGRID_API_KEY set — would send to ${to}: ${subject}`);
+    return;
+  }
+  try {
+    const body = JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: NOTIFY_FROM_EMAIL, name: "ZipCheck" },
+      subject,
+      content: [{ type: "text/html", value: html }]
+    });
+    const opts = {
+      hostname: "api.sendgrid.com", path: "/v3/mail/send", method: "POST",
+      headers: {
+        "Authorization": "Bearer " + SENDGRID_API_KEY,
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
+      }
+    };
+    await new Promise((resolve, reject) => {
+      const req = https.request(opts, (res) => {
+        let raw = ""; res.on("data", c => raw += c);
+        res.on("end", () => { console.log(`✉️  Email sent to ${to} (${res.statusCode})`); resolve(); });
+      });
+      req.on("error", reject); req.write(body); req.end();
+    });
+  } catch(e) { console.error("Email error:", e.message); }
+}
+
+function buildSubscriptionEmailHTML({ name, plan, billing, trialEnd }) {
+  const planDisplay = plan.charAt(0).toUpperCase() + plan.slice(1);
+  const billingDisplay = billing === "yearly" ? "Yearly" : "Monthly";
+  return `<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;margin:0;padding:32px">
+<div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1)">
+  <div style="background:linear-gradient(135deg,#065f46,#059669);padding:32px 36px;text-align:center">
+    <div style="font-size:44px;margin-bottom:12px">🎉</div>
+    <h1 style="color:#fff;margin:0;font-size:22px;font-weight:900">Welcome to ZipCheck ${planDisplay}!</h1>
+    <p style="color:rgba(255,255,255,.8);margin:8px 0 0;font-size:14px">Your subscription is now active</p>
+  </div>
+  <div style="padding:32px 36px">
+    <p style="font-size:15px;color:#374151;margin:0 0 20px">Hi <strong>${name}</strong>,</p>
+    <p style="font-size:14px;color:#6b7280;margin:0 0 24px;line-height:1.6">
+      Thank you for subscribing to ZipCheck <strong>${planDisplay}</strong>! Your 3-day free trial has started and you won't be charged until <strong>${trialEnd}</strong>.
+    </p>
+    <div style="background:#f0fdf4;border:1px solid #a7f3d0;border-radius:12px;padding:20px 24px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px;color:#6b7280;font-weight:600">Plan</span>
+        <span style="font-size:13px;color:#065f46;font-weight:800">${planDisplay}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:13px;color:#6b7280;font-weight:600">Billing</span>
+        <span style="font-size:13px;color:#065f46;font-weight:800">${billingDisplay}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:13px;color:#6b7280;font-weight:600">Trial ends</span>
+        <span style="font-size:13px;color:#065f46;font-weight:800">${trialEnd}</span>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#9ca3af;line-height:1.6;margin:0">
+      If you have any questions, reply to this email or visit your admin dashboard. You can cancel anytime before the trial ends with no charge.
+    </p>
+  </div>
+  <div style="padding:20px 36px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center">
+    <p style="font-size:12px;color:#9ca3af;margin:0">© ${new Date().getFullYear()} ZipCheck · All rights reserved</p>
+  </div>
+</div></body></html>`;
+}
+
+
 app.post("/api/create-subscription", async (req, res) => {
   const { paymentMethodId, email, name, priceId, plan, billing } = req.body;
   if (!paymentMethodId || !email || !priceId) return res.status(400).json({ error: "Missing required fields" });
@@ -243,6 +514,24 @@ app.post("/api/create-subscription", async (req, res) => {
     currentSubscriptionId = sub.id;
     currentCustomerId     = customerId;
     currentPlan           = plan;
+
+    // Send confirmation email to subscriber
+    const trialEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    sendEmail({
+      to: email,
+      subject: `🎉 Welcome to ZipCheck ${plan.charAt(0).toUpperCase()+plan.slice(1)} — Your trial has started!`,
+      html: buildSubscriptionEmailHTML({ name, plan, billing, trialEnd })
+    }).catch(e => console.error("Subscriber email error:", e.message));
+
+    // Send admin notification if configured
+    if (ADMIN_EMAIL) {
+      sendEmail({
+        to: ADMIN_EMAIL,
+        subject: `[ZipCheck] New subscription: ${plan} (${billing}) — ${email}`,
+        html: `<p>New subscriber: <strong>${name}</strong> (${email})<br>Plan: <strong>${plan}</strong> (${billing})<br>Subscription ID: ${sub.id}<br>Customer ID: ${customerId}</p>`
+      }).catch(e => console.error("Admin email error:", e.message));
+    }
+
     res.json({ success: true, subscriptionId: sub.id, customerId });
   } catch(e) { console.error("Stripe error:", e.message); res.status(500).json({ error: "Payment processing failed" }); }
 });
@@ -328,30 +617,30 @@ function buildAdminHTML() {
 body{font-family:var(--font);background:#f0f2f5;color:var(--g900);height:100vh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
 
 /* ══ SIDEBAR ══════════════════════════════════════════════════════════════ */
-.sidebar{width:232px;background:linear-gradient(180deg,#1a2640 0%,#1e3a5f 100%);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh}
-.sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar{width:232px;background:#ffffff;border-right:1px solid var(--g200);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh;box-shadow:2px 0 8px rgba(0,0,0,.06)}
+.sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
-.brand-name{font-size:15px;font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.2px}
-.brand-sub{font-size:11px;color:rgba(255,255,255,.4);font-weight:400}
+.brand-name{font-size:15px;font-weight:800;color:var(--g900);line-height:1.2;letter-spacing:-.2px}
+.brand-sub{font-size:11px;color:var(--g400);font-weight:400}
 .sidebar-nav{flex:1;padding:10px 8px}
-.nav-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);padding:10px 10px 5px}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:rgba(255,255,255,.6);text-align:left;transition:all .15s;border-radius:8px;margin-bottom:2px}
-.nav-btn:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-btn.active{background:linear-gradient(135deg,rgba(0,166,126,.25),rgba(0,166,126,.15));color:#fff;font-weight:600;box-shadow:inset 0 0 0 1px rgba(0,166,126,.3)}
-.nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;opacity:.8}
+.nav-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--g400);padding:10px 10px 5px}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:var(--g600);text-align:left;transition:all .15s;border-radius:8px;margin-bottom:2px}
+.nav-btn:hover{background:var(--g50);color:var(--g900)}
+.nav-btn.active{background:linear-gradient(135deg,var(--green-lt),#ecfdf5);color:var(--green-xdk);font-weight:700;box-shadow:inset 0 0 0 1px var(--green-md)}
+.nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;opacity:.7}
 .nav-btn.active .nav-icon{opacity:1}
-.sidebar-footer{padding:10px 8px 16px;border-top:1px solid rgba(255,255,255,.08)}
-.app-toggle-row{display:flex;align-items:center;gap:10px;padding:12px 12px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:all .2s}
-.app-toggle-row:hover{background:rgba(255,255,255,.1)}
+.sidebar-footer{padding:10px 8px 16px;border-top:1px solid var(--g100)}
+.app-toggle-row{display:flex;align-items:center;gap:10px;padding:12px 12px;border-radius:10px;background:var(--g50);border:1px solid var(--g200);cursor:pointer;transition:all .2s}
+.app-toggle-row:hover{background:var(--green-lt);border-color:var(--green-md)}
 .status-indicator{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 0 3px rgba(0,166,126,.25);animation:pulse-green 2s infinite}
-.status-indicator.off{background:var(--g500);box-shadow:none;animation:none}
+.status-indicator.off{background:var(--g400);box-shadow:none;animation:none}
 @keyframes pulse-green{0%,100%{box-shadow:0 0 0 3px rgba(0,166,126,.25)}50%{box-shadow:0 0 0 5px rgba(0,166,126,.1)}}
-.status-label{flex:1;font-size:12px;font-weight:600;color:#fff}
-.status-sub{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px}
+.status-label{flex:1;font-size:12px;font-weight:600;color:var(--g800)}
+.status-sub{font-size:10px;color:var(--g400);margin-top:1px}
 .toggle-pill{position:relative;width:34px;height:19px;cursor:pointer;display:inline-block;flex-shrink:0}
 .toggle-pill input{opacity:0;width:0;height:0}
-.toggle-track{position:absolute;inset:0;background:rgba(255,255,255,.2);border-radius:20px;transition:.2s}
-.toggle-track::after{content:'';position:absolute;left:2px;top:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle-track{position:absolute;inset:0;background:var(--g300);border-radius:20px;transition:.2s}
+.toggle-track::after{content:'';position:absolute;left:2px;top:2px;width:15px;height:15px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle-pill input:checked+.toggle-track{background:var(--green)}
 .toggle-pill input:checked+.toggle-track::after{transform:translateX(15px)}
 
@@ -1489,6 +1778,17 @@ function showPreview(j){document.getElementById('imp-s1').style.display='none';d
 function impAction(){if(_rows.length===0){document.getElementById('file-inp').click();return;}const mode=document.querySelector('input[name="imp-mode"]:checked')?.value||'merge';const valid=_rows.filter(r=>r.valid);if(!valid.length){toast('No valid rows to import','e');return;}fetch(API+'/api/rules/import/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:valid,mode})}).then(r=>r.json()).then(j=>{if(!j.success){toast(j.message||'Import failed','e');return;}toast('✅ Imported '+j.added+' rules'+(j.skipped?' ('+j.skipped+' skipped)':''),'s');closeImport();loadRules();}).catch(e=>toast('Error: '+e.message,'e'));}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-loadRules(); upv();
+(async function initApp(){
+  try {
+    const r = await fetch(API+'/api/app-status');
+    const j = await r.json();
+    if (j.plan) { currentPlan = j.plan; }
+    document.getElementById('app-chk').checked = j.active !== false;
+    document.getElementById('status-dot').className = 'status-indicator' + (j.active!==false?'':' off');
+    document.getElementById('status-text').textContent = j.active!==false ? 'App Active' : 'App Inactive';
+    document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
+  } catch(e) {}
+  loadRules(); upv();
+})();
 </script></body></html>`;
 }
