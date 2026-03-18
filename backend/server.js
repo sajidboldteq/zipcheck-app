@@ -85,6 +85,7 @@ app.get("/auth/callback", async (req, res) => {
     console.log("✅ Installed on:", shop);
     try { const { read, write } = require("./utils/store"); const sessions = read("sessions") || {}; sessions[shop] = { shop, accessToken, installedAt: new Date().toISOString() }; write("sessions", sessions); } catch(e) { console.log("Session save:", e.message); }
     try { await httpsPost(`https://${shop}/admin/api/2025-01/script_tags.json`, { script_tag: { event: "onload", src: `${HOST}/widget.js` } }, { "X-Shopify-Access-Token": accessToken }); console.log("✅ Script tag registered"); } catch(e) { console.log("Script tag:", e.message); }
+    // Redirect through Shopify admin so the iframe gets the ?host= param injected
     res.redirect(`https://${shop}/admin/apps/${SHOPIFY_API_KEY}`);
   } catch(e) { console.error("❌ Auth error:", e.message); res.status(500).send("Installation failed: " + e.message); }
 });
@@ -575,7 +576,7 @@ function buildAdminHTML() {
 }
 body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-/* ══ SIDEBAR — hidden; Shopify admin native nav takes its place ══════════ */
+/* ══ SIDEBAR — hidden; replaced by Shopify native nav ════════════════════ */
 .sidebar{display:none}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
@@ -1683,33 +1684,26 @@ let billingMode  = 'monthly';
 let selectedBlock = 'auto';
 let _upgradeData  = {};
 
-// ── SHOPIFY APP BRIDGE v3 — Native sidebar sub-navigation ─────────────────
-// UMD global: window['app-bridge']  (lowercase hyphenated — verified from source)
-// NavigationMenu items MUST be AppLink instances (not plain objects).
-// AppLink.create() returns an ActionSet that has .payload and .id.
-var _app     = null;
-var _navMenu = null;
-var _links   = {};   // page key → AppLink instance
+// ── SHOPIFY APP BRIDGE v3 ──────────────────────────────────────────────────
+// Requires: legacy install flow = OFF in Partner Dashboard
+// window['app-bridge'] is the UMD global (verified from source)
+// Items must be AppLink instances — plain objects break NavigationMenu
+var _app = null, _navMenu = null, _links = {};
 
 (function initAppBridge() {
   try {
     var AB   = window['app-bridge'];
     var host = new URLSearchParams(window.location.search).get('host');
-
     if (!AB)   { console.warn('[ZipCheck] App Bridge not loaded'); return; }
-    if (!host) { console.warn('[ZipCheck] No ?host= param — open via Shopify admin'); return; }
+    if (!host) { console.warn('[ZipCheck] No ?host= — open via Shopify admin'); return; }
 
-    // AB.default === compatibilityCreateApp (handles both v1 and v2 configs)
     _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
 
-    // Each nav item must be an AppLink instance — plain { label, destination }
-    // objects have no .payload getter and cause NavigationMenu to dispatch undefined.
     var AL = AB.actions.AppLink;
     var pages = [
-      { key: 'rules',      label: 'Zip Rules'       },
+      { key: 'rules',      label: 'Zip Rules'        },
       { key: 'settings',   label: 'Settings'         },
       { key: 'analytics',  label: 'Analytics'        },
-      { key: 'embed',      label: 'Embed / Shortcode'},
       { key: 'appblock',   label: 'App Block'        },
       { key: 'customcss',  label: 'Custom CSS'       },
       { key: 'pricing',    label: 'Pricing Plans'    },
@@ -1719,26 +1713,18 @@ var _links   = {};   // page key → AppLink instance
       _links[p.key] = AL.create(_app, { label: p.label, destination: '/app?page=' + p.key });
     });
 
-    var startKey  = new URLSearchParams(window.location.search).get('page') || 'rules';
-    var activeLink = _links[startKey] || _links['rules'];
-
+    var startKey = new URLSearchParams(window.location.search).get('page') || 'rules';
     _navMenu = AB.actions.NavigationMenu.create(_app, {
       items:  pages.map(function(p) { return _links[p.key]; }),
-      active: activeLink
+      active: _links[startKey] || _links['rules']
     });
-
-    console.log('[ZipCheck] NavigationMenu registered ✅ host=' + host.substring(0,20) + '...');
-  } catch(e) {
-    console.error('[ZipCheck] App Bridge error:', e.message || e);
-  }
+    console.log('[ZipCheck] NavigationMenu registered ✅');
+  } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message); }
 })();
 
-// Call after every nav() to update the active highlight in Shopify sidebar
 function _syncNav(page) {
   try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
 }
-
-// Keep ?page= in the URL so Shopify nav clicks deep-link back correctly
 function _syncUrl(page) {
   try {
     var sp = new URLSearchParams(window.location.search);
@@ -1770,8 +1756,7 @@ function navToPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const el = document.getElementById('page-' + page);
     if (el) el.classList.add('active');
-    _syncNav(page);
-    _syncUrl(page);
+    _syncNav(page); _syncUrl(page);
   }
 }
 
@@ -2164,18 +2149,12 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
     document.getElementById('status-text').textContent = j.active!==false ? 'App Active' : 'App Inactive';
     document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
   } catch(e) {}
-
-  // When a Shopify nav item is clicked it reloads the iframe with ?page=<key>
-  // Read that param and activate the matching page + nav button
+  // Read ?page= so clicking a Shopify sidebar nav item loads the right page
   const startPage = new URLSearchParams(window.location.search).get('page') || 'rules';
   const startBtn  = document.querySelector('[onclick*="nav(this,\''+startPage+'\')"]') ||
                     document.querySelector('[onclick*=\'nav(this,"'+startPage+'")\']');
-  if (startBtn) {
-    nav(startBtn, startPage);
-  } else {
-    // Fallback: just show the page without a nav-btn highlight
-    navToPage(startPage);
-  }
+  if (startBtn) nav(startBtn, startPage);
+  else navToPage(startPage);
   upv();
 })();
 </script></body></html>`;
