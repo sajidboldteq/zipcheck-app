@@ -85,7 +85,6 @@ app.get("/auth/callback", async (req, res) => {
     console.log("✅ Installed on:", shop);
     try { const { read, write } = require("./utils/store"); const sessions = read("sessions") || {}; sessions[shop] = { shop, accessToken, installedAt: new Date().toISOString() }; write("sessions", sessions); } catch(e) { console.log("Session save:", e.message); }
     try { await httpsPost(`https://${shop}/admin/api/2025-01/script_tags.json`, { script_tag: { event: "onload", src: `${HOST}/widget.js` } }, { "X-Shopify-Access-Token": accessToken }); console.log("✅ Script tag registered"); } catch(e) { console.log("Script tag:", e.message); }
-    // Redirect through Shopify admin so the iframe gets the ?host= param injected
     res.redirect(`https://${shop}/admin/apps/${SHOPIFY_API_KEY}`);
   } catch(e) { console.error("❌ Auth error:", e.message); res.status(500).send("Installation failed: " + e.message); }
 });
@@ -576,7 +575,7 @@ function buildAdminHTML() {
 }
 body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-/* ══ SIDEBAR — hidden; replaced by Shopify native nav ════════════════════ */
+/* ══ SIDEBAR — hidden; Shopify native nav replaces it ════════════════════ */
 .sidebar{display:none}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
@@ -1684,30 +1683,28 @@ let billingMode  = 'monthly';
 let selectedBlock = 'auto';
 let _upgradeData  = {};
 
-// ── SHOPIFY APP BRIDGE v3 ──────────────────────────────────────────────────
-// Requires: legacy install flow = OFF in Partner Dashboard
-// window['app-bridge'] is the UMD global (verified from source)
-// Items must be AppLink instances — plain objects break NavigationMenu
+// ── SHOPIFY APP BRIDGE v3 ─────────────────────────────────────────────────
 var _app = null, _navMenu = null, _links = {};
 
 (function initAppBridge() {
   try {
-    var AB   = window['app-bridge'];
+    var AB = window['app-bridge'];
     var host = new URLSearchParams(window.location.search).get('host');
     if (!AB)   { console.warn('[ZipCheck] App Bridge not loaded'); return; }
-    if (!host) { console.warn('[ZipCheck] No ?host= — open via Shopify admin'); return; }
+    if (!host) { console.warn('[ZipCheck] No ?host= param'); return; }
 
     _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
 
+    // Items MUST be AppLink instances — plain objects have no .payload and break NavigationMenu
     var AL = AB.actions.AppLink;
     var pages = [
-      { key: 'rules',      label: 'Zip Rules'        },
-      { key: 'settings',   label: 'Settings'         },
-      { key: 'analytics',  label: 'Analytics'        },
-      { key: 'appblock',   label: 'App Block'        },
-      { key: 'customcss',  label: 'Custom CSS'       },
-      { key: 'pricing',    label: 'Pricing Plans'    },
-      { key: 'helpcenter', label: 'Help Center'      }
+      { key: 'rules',      label: 'Zip Rules'     },
+      { key: 'settings',   label: 'Settings'      },
+      { key: 'analytics',  label: 'Analytics'     },
+      { key: 'appblock',   label: 'App Block'     },
+      { key: 'customcss',  label: 'Custom CSS'    },
+      { key: 'pricing',    label: 'Pricing Plans' },
+      { key: 'helpcenter', label: 'Help Center'   }
     ];
     pages.forEach(function(p) {
       _links[p.key] = AL.create(_app, { label: p.label, destination: '/app?page=' + p.key });
@@ -1718,8 +1715,8 @@ var _app = null, _navMenu = null, _links = {};
       items:  pages.map(function(p) { return _links[p.key]; }),
       active: _links[startKey] || _links['rules']
     });
-    console.log('[ZipCheck] NavigationMenu registered ✅');
-  } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message); }
+    console.log('[ZipCheck] NavigationMenu registered OK');
+  } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message || e); }
 })();
 
 function _syncNav(page) {
@@ -1733,12 +1730,24 @@ function _syncUrl(page) {
   } catch(e) {}
 }
 
+// ── Find a nav button by page key (loop — no CSS selector escaping needed) ─
+function findNavBtn(page) {
+  var btns = document.querySelectorAll('.nav-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var oc = btns[i].getAttribute('onclick') || '';
+    if (oc.indexOf("'" + page + "'") !== -1 || oc.indexOf('"' + page + '"') !== -1) {
+      return btns[i];
+    }
+  }
+  return null;
+}
+
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function nav(btn, page) {
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   if (btn) btn.classList.add('active');
-  const pageEl = document.getElementById('page-' + page);
+  var pageEl = document.getElementById('page-' + page);
   if (pageEl) pageEl.classList.add('active');
   if (page === 'rules')     loadRules();
   if (page === 'analytics') loadAnalytics();
@@ -1749,15 +1758,13 @@ function nav(btn, page) {
   _syncUrl(page);
 }
 function navToPage(page) {
-  const btn = document.querySelector('[onclick*="nav(this,\''+page+'\')"]') ||
-              document.querySelector('[onclick*=\'nav(this,"'+page+'")\']');
-  if (btn) nav(btn, page);
-  else {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const el = document.getElementById('page-' + page);
-    if (el) el.classList.add('active');
-    _syncNav(page); _syncUrl(page);
-  }
+  var btn = findNavBtn(page);
+  if (btn) { nav(btn, page); return; }
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  _syncNav(page);
+  _syncUrl(page);
 }
 
 // ── APP TOGGLE ────────────────────────────────────────────────────────────────
@@ -2149,10 +2156,9 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
     document.getElementById('status-text').textContent = j.active!==false ? 'App Active' : 'App Inactive';
     document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
   } catch(e) {}
-  // Read ?page= so clicking a Shopify sidebar nav item loads the right page
-  const startPage = new URLSearchParams(window.location.search).get('page') || 'rules';
-  const startBtn  = document.querySelector('[onclick*="nav(this,\''+startPage+'\')"]') ||
-                    document.querySelector('[onclick*=\'nav(this,"'+startPage+'")\']');
+  // Honour ?page= deep-link — Shopify nav clicks reload the iframe with this param
+  var startPage = new URLSearchParams(window.location.search).get('page') || 'rules';
+  var startBtn  = findNavBtn(startPage);
   if (startBtn) nav(startBtn, startPage);
   else navToPage(startPage);
   upv();
