@@ -89,8 +89,26 @@ app.get("/auth/callback", async (req, res) => {
   } catch(e) { console.error("❌ Auth error:", e.message); res.status(500).send("Installation failed: " + e.message); }
 });
 
-app.get("/",    (req, res) => res.send(buildAdminHTML()));
-app.get("/app", (req, res) => res.send(buildAdminHTML()));
+app.get("/",    (req, res) => {
+  // Preserve all Shopify params (host, hmac, shop, timestamp, embedded) + add ?page=rules
+  if (!req.query.page) {
+    const p = new URLSearchParams(req.query);
+    p.set('page', 'rules');
+    return res.redirect(302, '/app?' + p.toString());
+  }
+  res.send(buildAdminHTML());
+});
+app.get("/app", (req, res) => {
+  // If no ?page= param, redirect to /app?page=rules preserving all Shopify query params.
+  // Shopify matches NavigationMenu active item by comparing the iframe URL against each
+  // item's destination. Without ?page= the URL matches nothing → Help Center highlights.
+  if (!req.query.page) {
+    const p = new URLSearchParams(req.query);
+    p.set('page', 'rules');
+    return res.redirect(302, '/app?' + p.toString());
+  }
+  res.send(buildAdminHTML());
+});
 
 // ── Widget JS ─────────────────────────────────────────────────────────────────
 app.get("/widget.js", (req, res) => {
@@ -575,7 +593,10 @@ function buildAdminHTML() {
 }
 html{background:#f0f2f5}
 @keyframes zc-fade{from{opacity:0}to{opacity:1}}
-body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased;animation:zc-fade .12s ease}
+@keyframes zc-bar{from{width:0}to{width:85%}}
+body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased;animation:zc-fade .15s ease}
+/* Loading bar — shows at top during every iframe reload (the "jump") */
+body::before{content:'';position:fixed;top:0;left:0;height:2px;background:#303030;width:0;animation:zc-bar .4s ease forwards;z-index:9999}
 
 /* ══ SIDEBAR — hidden; Shopify native nav replaces it ════════════════════ */
 .sidebar{display:none}
@@ -1686,7 +1707,10 @@ let selectedBlock = 'auto';
 let _upgradeData  = {};
 
 // ── SHOPIFY APP BRIDGE v3 ─────────────────────────────────────────────────
-var _app = null, _navMenu = null, _links = {}, _history = null;
+// Active state is driven by URL matching: Shopify compares the iframe URL
+// against each NavigationMenu item's destination. The server-side redirect
+// above ensures ?page=X is always in the URL, so matching always works.
+var _app = null, _navMenu = null, _links = {};
 
 (function initAppBridge() {
   try {
@@ -1696,11 +1720,6 @@ var _app = null, _navMenu = null, _links = {}, _history = null;
     if (!host) { console.warn('[ZipCheck] No ?host= param'); return; }
 
     _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
-
-    // History action — tells Shopify admin which route is active.
-    // This is what Shopify's router uses to set the NavigationMenu active state.
-    // Without this, Shopify guesses based on partial URL matching and gets it wrong.
-    _history = AB.actions.History.create(_app);
 
     var AL = AB.actions.AppLink;
     var pages = [
@@ -1716,36 +1735,19 @@ var _app = null, _navMenu = null, _links = {}, _history = null;
       _links[p.key] = AL.create(_app, { label: p.label, destination: '/app?page=' + p.key });
     });
 
+    // ?page= is guaranteed to be in the URL (server redirects if missing)
     var startKey = new URLSearchParams(window.location.search).get('page') || 'rules';
-
-    // Write ?page= into URL if missing so Shopify can match it
-    if (!new URLSearchParams(window.location.search).get('page')) {
-      try {
-        var sp = new URLSearchParams(window.location.search);
-        sp.set('page', startKey);
-        window.history.replaceState(null, '', window.location.pathname + '?' + sp.toString());
-      } catch(e) {}
-    }
-
-    // Tell Shopify admin the exact current route — this drives the active highlight
-    _history.dispatch(AB.actions.History.Action.REPLACE, '/app?page=' + startKey);
 
     _navMenu = AB.actions.NavigationMenu.create(_app, {
       items:  pages.map(function(p) { return _links[p.key]; }),
       active: _links[startKey] || _links['rules']
     });
-    console.log('[ZipCheck] NavigationMenu ready, active: ' + startKey);
+    console.log('[ZipCheck] NavigationMenu ready — page: ' + startKey);
   } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message || e); }
 })();
 
 function _syncNav(page) {
-  try {
-    if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] });
-    // History.replace tells Shopify admin the current route — drives active highlight
-    if (_history && window['app-bridge']) {
-      _history.dispatch(window['app-bridge'].actions.History.Action.REPLACE, '/app?page=' + page);
-    }
-  } catch(e) {}
+  try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
 }
 function _syncUrl(page) {
   try {
