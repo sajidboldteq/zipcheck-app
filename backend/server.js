@@ -552,7 +552,6 @@ function buildAdminHTML() {
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ZipCheck — Admin</title>
 <script src="https://js.stripe.com/v3/"></script>
-<script src="https://unpkg.com/@shopify/app-bridge@3/umd/index.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -573,10 +572,10 @@ function buildAdminHTML() {
   --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
   --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
 }
-body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:#f0f2f5;color:var(--g900);height:100vh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
 
-/* ══ SIDEBAR — hidden; Shopify admin native sidebar takes over ════════════ */
-.sidebar{display:none}
+/* ══ SIDEBAR ══════════════════════════════════════════════════════════════ */
+.sidebar{width:232px;background:#ffffff;border-right:1px solid var(--g200);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh;box-shadow:2px 0 8px rgba(0,0,0,.06)}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
 .brand-name{font-size:15px;font-weight:800;color:var(--g900);line-height:1.2;letter-spacing:-.2px}
@@ -604,7 +603,7 @@ body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100
 .toggle-pill input:checked+.toggle-track::after{transform:translateX(15px)}
 
 /* ══ CONTENT ══════════════════════════════════════════════════════════════ */
-.content{width:100%;padding:28px 32px;min-height:100vh;overflow-y:auto}
+.content{flex:1;overflow-y:auto;padding:28px 32px;height:100vh}
 .page{display:none}.page.active{display:block;max-width:960px}
 .page-header{margin-bottom:26px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .page-title{font-size:24px;font-weight:900;color:var(--g900);letter-spacing:-.5px}
@@ -816,7 +815,7 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 #toast.n{background:linear-gradient(135deg,var(--g800),var(--g900));color:#fff}
 
 @media(max-width:960px){.plans-grid{grid-template-columns:repeat(2,1fr)}.settings-2col{grid-template-columns:1fr}}
-@media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.plans-grid{grid-template-columns:1fr}.settings-2col{grid-template-columns:1fr}}
+@media(max-width:640px){.sidebar{display:none}.stats{grid-template-columns:1fr 1fr}.plans-grid{grid-template-columns:1fr}.settings-2col{grid-template-columns:1fr}}
 </style></head><body>
 
 <!-- ═══════════ SIDEBAR ═══════════ -->
@@ -1683,106 +1682,21 @@ let billingMode  = 'monthly';
 let selectedBlock = 'auto';
 let _upgradeData  = {};
 
-// ── SHOPIFY APP BRIDGE v3 — Native sidebar navigation ─────────────────────
-//
-// ROOT CAUSE of all previous failures:
-//   1. window['app-bridge'] is the correct UMD global (confirmed from source)
-//   2. NavigationMenu items MUST be AppLink instances — NOT plain objects.
-//      NavigationMenu.setItems() calls .payload on each item. Plain objects
-//      have no .payload getter → every item dispatches as undefined → blank nav.
-//
-var _app     = null;   // App Bridge app instance
-var _navMenu = null;   // NavigationMenu instance
-var _links   = {};     // keyed by page name → AppLink instance
-
-(function initAppBridge() {
-  try {
-    var AB   = window['app-bridge'];                   // ← correct UMD global
-    var host = new URLSearchParams(window.location.search).get('host');
-
-    if (!AB)   { console.warn('[ZipCheck] App Bridge not loaded'); return; }
-    if (!host) { console.warn('[ZipCheck] ?host= param missing — not embedded'); return; }
-
-    // Create the app instance (AB.default = compatibilityCreateApp)
-    _app = AB.default({
-      apiKey:        '${SHOPIFY_API_KEY}',
-      host:          host,
-      forceRedirect: false
-    });
-
-    // ── Build AppLink instances (REQUIRED — plain objects don't work) ──────
-    // AB.actions.AppLink.create() returns a proper ActionSet with .payload
-    var AL = AB.actions.AppLink;
-    var navItems = [
-      { key: 'dashboard',     label: 'Dashboard',            dest: '/app?page=dashboard'     },
-      { key: 'rules',         label: 'Zip Codes',            dest: '/app?page=rules'         },
-      { key: 'deliveryrules', label: 'Delivery Rules',       dest: '/app?page=deliveryrules' },
-      { key: 'waitlist',      label: 'Waitlist',             dest: '/app?page=waitlist'      },
-      { key: 'settings',      label: 'Widget Customization', dest: '/app?page=settings'      },
-      { key: 'appsettings',   label: 'Settings',             dest: '/app?page=appsettings'   },
-      { key: 'helpcenter',    label: 'Help & Support',       dest: '/app?page=helpcenter'    }
-    ];
-
-    navItems.forEach(function(item) {
-      _links[item.key] = AL.create(_app, { label: item.label, destination: item.dest });
-    });
-
-    // Determine which page is active right now
-    var startPage   = new URLSearchParams(window.location.search).get('page') || 'dashboard';
-    var activeLink  = _links[startPage] || _links['dashboard'];
-
-    // ── Create NavigationMenu with AppLink instances (not plain objects) ───
-    _navMenu = AB.actions.NavigationMenu.create(_app, {
-      items:  Object.values(_links),  // AppLink instances
-      active: activeLink              // AppLink instance (has .id)
-    });
-
-    console.log('[ZipCheck] App Bridge NavigationMenu registered ✅');
-  } catch (e) {
-    console.error('[ZipCheck] App Bridge init error:', e);
-  }
-})();
-
-// Update the active nav highlight in Shopify's sidebar
-function _syncNav(page) {
-  try {
-    if (!_navMenu || !_links[page]) return;
-    // .set() on the NavigationMenu instance updates active and re-dispatches
-    _navMenu.set({ active: _links[page] });
-  } catch(e) {}
-}
-
-// Keep ?page= in the URL so Shopify nav clicks deep-link correctly on reload
-function _syncUrl(page) {
-  try {
-    var sp = new URLSearchParams(window.location.search);
-    sp.set('page', page);
-    window.history.replaceState(null, '', window.location.pathname + '?' + sp.toString());
-  } catch(e) {}
-}
-
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function nav(btn, page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  const el = document.getElementById('page-' + page);
-  if (el) el.classList.add('active');
-  if (page === 'rules')         loadRules();
-  if (page === 'analytics')     loadAnalytics();
-  if (page === 'settings')      loadSettings();
-  if (page === 'customcss')     loadCSS();
-  if (page === 'appblock')      loadPlacement();
-  if (page === 'dashboard')     loadDashboard();
-  if (page === 'appsettings')   { loadPlacement2(); loadCSS2(); }
-  if (page === 'waitlist')      loadWaitlist();
-  if (page === 'deliveryrules') loadDeliveryRules();
-  _syncNav(page);
-  _syncUrl(page);
+  btn.classList.add('active');
+  document.getElementById('page-' + page).classList.add('active');
+  if (page === 'rules')     loadRules();
+  if (page === 'analytics') loadAnalytics();
+  if (page === 'settings')  loadSettings();
+  if (page === 'customcss') loadCSS();
+  if (page === 'appblock')  loadPlacement();
 }
 function navToPage(page) {
-  const btn = document.querySelector('[onclick*="nav(this,\''+page+'\')"]') ||
-              document.querySelector('[onclick*=\'nav(this,"'+page+'")\']');
+  const btn = document.querySelector('[onclick*="nav(this,\\''+page+'\\')"]') ||
+              document.querySelector('[onclick*="nav(this,\\"'+page+'\\")"]');
   if (btn) nav(btn, page);
 }
 
@@ -2170,30 +2084,12 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
     const r = await fetch(API+'/api/app-status');
     const j = await r.json();
     if (j.plan) { currentPlan = j.plan; }
-    const planNames = {free:'Free Plan',basic:'Basic Plan',starter:'Starter Plan',pro:'Pro Plan'};
-    const pLabel = document.getElementById('dash-plan-label');
-    if (pLabel) pLabel.textContent = planNames[j.plan||'free'] || 'Free Plan';
     document.getElementById('app-chk').checked = j.active !== false;
     document.getElementById('status-dot').className = 'status-indicator' + (j.active!==false?'':' off');
     document.getElementById('status-text').textContent = j.active!==false ? 'App Active' : 'App Inactive';
     document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
-    const banner = document.getElementById('dash-live-banner');
-    if (banner && j.active===false) banner.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
   } catch(e) {}
-
-  // Honour ?page= deep-link — Shopify nav clicks reload the iframe with this param
-  const startPage = new URLSearchParams(window.location.search).get('page') || 'dashboard';
-  const startBtn  = document.querySelector('[onclick*="nav(this,\''+startPage+'\')"]') ||
-                    document.querySelector('[onclick*=\'nav(this,"'+startPage+'")\']');
-  if (startBtn) {
-    nav(startBtn, startPage);
-  } else {
-    const dashBtn = document.querySelectorAll('.nav-btn')[0];
-    if (dashBtn) dashBtn.classList.add('active');
-    loadDashboard();
-    _syncNav('dashboard');
-  }
-  upv();
+  loadRules(); upv();
 })();
 </script></body></html>`;
 }
