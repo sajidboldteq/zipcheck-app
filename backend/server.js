@@ -1952,28 +1952,31 @@ let selectedBlock = 'auto';
 let _upgradeData  = {};
 
 // ── SHOPIFY APP BRIDGE v3 — Native sidebar navigation ─────────────────────
-// The UMD bundle exposes the library as window.AppBridge
-var _appBridge      = null;
-var _navMenu        = null;
+// The UMD bundle at /umd/index.js exposes itself as window['app-bridge']
+// Init method is .default()  |  NavigationMenu is at .actions.NavigationMenu
+var _app     = null;
+var _navMenu = null;
 
 (function initAppBridge() {
   try {
-    var AppBridge = window.AppBridge;
-    if (!AppBridge) { console.warn('App Bridge not loaded'); return; }
+    // Correct global: window['app-bridge'] (lowercase, hyphenated)
+    var AB = window['app-bridge'];
+    if (!AB) { console.warn('[ZipCheck] App Bridge not found on window'); return; }
 
     var host = new URLSearchParams(window.location.search).get('host');
-    if (!host) { console.warn('App Bridge: no ?host= param'); return; }
+    if (!host) { console.warn('[ZipCheck] App Bridge: ?host= param missing'); return; }
 
-    // Create the app instance
-    _appBridge = AppBridge.default({
+    // .default is the createApp factory in the UMD build
+    _app = AB.default({
       apiKey: '${SHOPIFY_API_KEY}',
       host:   host,
       forceRedirect: false
     });
 
-    // Register the navigation menu — these labels and destinations appear
-    // directly under the app name in the Shopify admin left sidebar
-    _navMenu = AppBridge.actions.NavigationMenu.create(_appBridge, {
+    // Build navigation — these items appear directly under the app name
+    // in the Shopify admin left sidebar (the red-boxed area in your screenshot)
+    var NavMenu = AB.actions.NavigationMenu;
+    _navMenu = NavMenu.create(_app, {
       items: [
         { label: 'Dashboard',            destination: '/app?page=dashboard'     },
         { label: 'Zip Codes',            destination: '/app?page=rules'         },
@@ -1983,25 +1986,28 @@ var _navMenu        = null;
         { label: 'Settings',             destination: '/app?page=appsettings'   },
         { label: 'Help & Support',       destination: '/app?page=helpcenter'    }
       ],
-      active: { destination: '/app?page=dashboard' }
+      active: {
+        destination: '/app?page=' + (new URLSearchParams(window.location.search).get('page') || 'dashboard')
+      }
     });
 
+    console.log('[ZipCheck] App Bridge + NavigationMenu initialised ✅');
   } catch (e) {
-    console.warn('App Bridge init error:', e.message);
+    console.error('[ZipCheck] App Bridge init error:', e);
   }
 })();
 
-// Helper: update which nav item is highlighted in the Shopify sidebar
-function _syncAppBridgeNav(page) {
+// Sync active nav item in the Shopify sidebar whenever the user navigates
+function _syncNav(page) {
   try {
-    if (!_navMenu || !window.AppBridge) return;
-    AppBridge.actions.NavigationMenu.update(_navMenu, {
+    if (!_navMenu || !window['app-bridge']) return;
+    window['app-bridge'].actions.NavigationMenu.update(_navMenu, {
       active: { destination: '/app?page=' + page }
     });
   } catch(e) {}
 }
 
-// Helper: keep ?page= in the URL so a reload returns to the same section
+// Keep ?page= in the URL so Shopify can deep-link back on reload
 function _syncUrl(page) {
   try {
     var sp = new URLSearchParams(window.location.search);
@@ -2044,7 +2050,7 @@ function nav(btn, page) {
   if (page === 'appsettings')   { loadPlacement2(); loadCSS2(); }
   if (page === 'waitlist')      loadWaitlist();
   if (page === 'deliveryrules') loadDeliveryRules();
-  _syncAppBridgeNav(page);
+  _syncNav(page);
   _syncUrl(page);
 }
 function navToPage(page) {
@@ -2574,7 +2580,7 @@ async function loadCSS2() {
     if(banner && j.active===false) banner.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
   } catch(e) {}
 
-  // Honour ?page= deep-link emitted by App Bridge nav clicks
+  // Honour ?page= deep-link — Shopify nav clicks reload the iframe with this param
   const startPage = new URLSearchParams(window.location.search).get('page') || 'dashboard';
   const startBtn  = document.querySelector('[onclick*="nav(this,\''+startPage+'\')"]') ||
                     document.querySelector('[onclick*=\'nav(this,"'+startPage+'")\']');
@@ -2584,7 +2590,7 @@ async function loadCSS2() {
     const dashBtn = document.querySelectorAll('.nav-btn')[0];
     if (dashBtn) dashBtn.classList.add('active');
     loadDashboard();
-    _syncAppBridgeNav('dashboard');
+    _syncNav('dashboard');
   }
   upv();
 })();
