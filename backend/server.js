@@ -573,7 +573,9 @@ function buildAdminHTML() {
   --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
   --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
 }
-body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
+html{background:#f0f2f5}
+@keyframes zc-fade{from{opacity:0}to{opacity:1}}
+body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased;animation:zc-fade .12s ease}
 
 /* ══ SIDEBAR — hidden; Shopify native nav replaces it ════════════════════ */
 .sidebar{display:none}
@@ -1684,7 +1686,7 @@ let selectedBlock = 'auto';
 let _upgradeData  = {};
 
 // ── SHOPIFY APP BRIDGE v3 ─────────────────────────────────────────────────
-var _app = null, _navMenu = null, _links = {};
+var _app = null, _navMenu = null, _links = {}, _history = null;
 
 (function initAppBridge() {
   try {
@@ -1694,6 +1696,11 @@ var _app = null, _navMenu = null, _links = {};
     if (!host) { console.warn('[ZipCheck] No ?host= param'); return; }
 
     _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
+
+    // History action — tells Shopify admin which route is active.
+    // This is what Shopify's router uses to set the NavigationMenu active state.
+    // Without this, Shopify guesses based on partial URL matching and gets it wrong.
+    _history = AB.actions.History.create(_app);
 
     var AL = AB.actions.AppLink;
     var pages = [
@@ -1709,10 +1716,9 @@ var _app = null, _navMenu = null, _links = {};
       _links[p.key] = AL.create(_app, { label: p.label, destination: '/app?page=' + p.key });
     });
 
-    // Determine active page BEFORE creating NavigationMenu.
-    // Must also write ?page= into the URL now so Shopify's URL-matcher on the
-    // admin side sees /app?page=rules and highlights "Zip Rules", not "Help Center".
     var startKey = new URLSearchParams(window.location.search).get('page') || 'rules';
+
+    // Write ?page= into URL if missing so Shopify can match it
     if (!new URLSearchParams(window.location.search).get('page')) {
       try {
         var sp = new URLSearchParams(window.location.search);
@@ -1721,16 +1727,25 @@ var _app = null, _navMenu = null, _links = {};
       } catch(e) {}
     }
 
+    // Tell Shopify admin the exact current route — this drives the active highlight
+    _history.dispatch(AB.actions.History.Action.REPLACE, '/app?page=' + startKey);
+
     _navMenu = AB.actions.NavigationMenu.create(_app, {
       items:  pages.map(function(p) { return _links[p.key]; }),
       active: _links[startKey] || _links['rules']
     });
-    console.log('[ZipCheck] NavigationMenu registered OK — active: ' + startKey);
+    console.log('[ZipCheck] NavigationMenu ready, active: ' + startKey);
   } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message || e); }
 })();
 
 function _syncNav(page) {
-  try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
+  try {
+    if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] });
+    // History.replace tells Shopify admin the current route — drives active highlight
+    if (_history && window['app-bridge']) {
+      _history.dispatch(window['app-bridge'].actions.History.Action.REPLACE, '/app?page=' + page);
+    }
+  } catch(e) {}
 }
 function _syncUrl(page) {
   try {
@@ -2157,23 +2172,21 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (async function initApp(){
-  // ── Step 1: Activate the correct page INSTANTLY (no async needed) ──────────
-  // This runs synchronously before any fetch, so the right page shows immediately
-  // after each navigation reload — eliminating the white blank flash.
+  // Determine which page to show from the URL (Shopify nav injects ?page=X)
   var startPage = new URLSearchParams(window.location.search).get('page') || 'rules';
-  var startBtn  = findNavBtn(startPage);
-  if (startBtn) {
-    // Activate page directly without calling load* functions yet (data loads after)
-    document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
-    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-    startBtn.classList.add('active');
-    var pageEl = document.getElementById('page-' + startPage);
-    if (pageEl) pageEl.classList.add('active');
-  } else {
-    navToPage(startPage);
-  }
 
-  // ── Step 2: Load app status and page data asynchronously ───────────────────
+  // ── Step 1: Show the correct page INSTANTLY (synchronous — zero delay) ──────
+  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  var startBtn = findNavBtn(startPage);
+  if (startBtn) startBtn.classList.add('active');
+  var pageEl = document.getElementById('page-' + startPage);
+  if (pageEl) pageEl.classList.add('active');
+
+  // ── Step 2: Sync the Shopify sidebar active highlight immediately ────────────
+  _syncNav(startPage);
+
+  // ── Step 3: Load app status (async — doesn't block content) ────────────────
   try {
     const r = await fetch(API+'/api/app-status');
     const j = await r.json();
@@ -2184,15 +2197,14 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
     document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
   } catch(e) {}
 
-  // ── Step 3: Now load the data for whichever page is active ─────────────────
-  if (startPage === 'rules')     loadRules();
+  // ── Step 4: Load data for the active page ───────────────────────────────────
+  if      (startPage === 'rules')     loadRules();
   else if (startPage === 'analytics') loadAnalytics();
   else if (startPage === 'settings')  loadSettings();
   else if (startPage === 'customcss') loadCSS();
   else if (startPage === 'appblock')  loadPlacement();
-  else loadRules(); // default
+  else                                loadRules();
 
-  _syncNav(startPage);
   upv();
 })();
 </script></body></html>`;
