@@ -318,17 +318,7 @@ app.get("/widget.js", (req, res) => {
 
 app.get("/embed", (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;padding:12px;background:#fff}.w{border:1px solid #e4e5e7;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}label{display:block;font-weight:700;font-size:14px;margin-bottom:12px}.row{display:flex;gap:8px;flex-wrap:wrap}input{flex:1;min-width:100px;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;outline:none}button{padding:10px 20px;background:#008060;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer}.res{margin-top:10px;font-size:14px;min-height:18px;font-weight:500}
-/* ══ DASHBOARD CARDS ══ */
-.dash-card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);padding:22px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
-.dash-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--g300)}
-.dash-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
-.dash-card-title{font-size:15px;font-weight:700;color:var(--g900);margin-bottom:6px}
-.dash-card-desc{font-size:13px;color:var(--g500);line-height:1.5;margin-bottom:16px}
-.dash-card-btn{background:none;border:none;color:var(--green-dk);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font);transition:color .15s}
-.dash-card:hover .dash-card-btn{color:var(--green-xdk)}
-
-</style></head><body><div class="w"><label>📍 Check Delivery Availability</label><div class="row"><input id="z" placeholder="Enter zip / postal code" maxlength="12"/><button onclick="chk()">Check</button></div><div class="res" id="r"></div></div><script>async function chk(){var zip=document.getElementById('z').value.trim().toUpperCase(),out=document.getElementById('r');if(!zip||zip.length<4){out.innerHTML='<span style="color:#d72c0d">Enter a valid zip code</span>';return;}out.innerHTML='<span style="color:#999">Checking...</span>';try{var r=await fetch('${HOST}/api/check/lookup/'+encodeURIComponent(zip)),d=(await r.json()).data;out.innerHTML=d.result==='allow'?'<span style="color:#008060">✅ '+(d.message||'Delivery available!')+'</span>':d.result==='block'?'<span style="color:#d72c0d">🚫 '+(d.message||'Not available.')+'</span>':'<span style="color:#f59e0b">ℹ️ Please contact us.</span>';}catch(e){out.innerHTML='<span style="color:#d72c0d">Error. Try again.</span>';}}document.getElementById('z').onkeydown=function(e){if(e.key==='Enter')chk();};<\/script></body></html>`);
+  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;padding:12px;background:#fff}.w{border:1px solid #e4e5e7;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}label{display:block;font-weight:700;font-size:14px;margin-bottom:12px}.row{display:flex;gap:8px;flex-wrap:wrap}input{flex:1;min-width:100px;padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;outline:none}button{padding:10px 20px;background:#008060;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer}.res{margin-top:10px;font-size:14px;min-height:18px;font-weight:500}</style></head><body><div class="w"><label>📍 Check Delivery Availability</label><div class="row"><input id="z" placeholder="Enter zip / postal code" maxlength="12"/><button onclick="chk()">Check</button></div><div class="res" id="r"></div></div><script>async function chk(){var zip=document.getElementById('z').value.trim().toUpperCase(),out=document.getElementById('r');if(!zip||zip.length<4){out.innerHTML='<span style="color:#d72c0d">Enter a valid zip code</span>';return;}out.innerHTML='<span style="color:#999">Checking...</span>';try{var r=await fetch('${HOST}/api/check/lookup/'+encodeURIComponent(zip)),d=(await r.json()).data;out.innerHTML=d.result==='allow'?'<span style="color:#008060">✅ '+(d.message||'Delivery available!')+'</span>':d.result==='block'?'<span style="color:#d72c0d">🚫 '+(d.message||'Not available.')+'</span>':'<span style="color:#f59e0b">ℹ️ Please contact us.</span>';}catch(e){out.innerHTML='<span style="color:#d72c0d">Error. Try again.</span>';}}document.getElementById('z').onkeydown=function(e){if(e.key==='Enter')chk();};<\/script></body></html>`);
 });
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
@@ -585,7 +575,7 @@ function buildAdminHTML() {
 }
 body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-/* ══ SIDEBAR — hidden; Shopify admin sidebar takes over navigation ════════ */
+/* ══ SIDEBAR — hidden; Shopify admin native sidebar takes over ════════════ */
 .sidebar{display:none}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
@@ -827,57 +817,27 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 
 @media(max-width:960px){.plans-grid{grid-template-columns:repeat(2,1fr)}.settings-2col{grid-template-columns:1fr}}
 @media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.plans-grid{grid-template-columns:1fr}.settings-2col{grid-template-columns:1fr}}
-
-/* ══ DASHBOARD CARDS ══ */
-.dash-card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);padding:22px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
-.dash-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--g300)}
-.dash-card-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
-.dash-card-title{font-size:15px;font-weight:700;color:var(--g900);margin-bottom:6px}
-.dash-card-desc{font-size:13px;color:var(--g500);line-height:1.5;margin-bottom:16px}
-.dash-card-btn{background:none;border:none;color:var(--green-dk);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font);transition:color .15s}
-.dash-card:hover .dash-card-btn{color:var(--green-xdk)}
-
 </style></head><body>
 
 <!-- ═══════════ SIDEBAR ═══════════ -->
 <nav class="sidebar">
   <div class="sidebar-brand">
     <div class="brand-icon">📍</div>
-    <div><div class="brand-name">ZipCheck</div><div class="brand-sub">Zip Code Checker</div></div>
+    <div><div class="brand-name">ZipCheck</div><div class="brand-sub">Admin Dashboard</div></div>
   </div>
   <div class="sidebar-nav">
-    <button class="nav-btn" onclick="nav(this,'dashboard')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      </span>Dashboard</button>
-    <button class="nav-btn" onclick="nav(this,'rules')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      </span>Zip Codes</button>
-    <button class="nav-btn" onclick="nav(this,'deliveryrules')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      </span>Delivery Rules</button>
-    <button class="nav-btn" onclick="nav(this,'waitlist')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      </span>Waitlist</button>
-    <button class="nav-btn" onclick="nav(this,'settings')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </span>Widget Customization</button>
-    <button class="nav-btn" onclick="nav(this,'appsettings')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      </span>Settings</button>
-    <button class="nav-btn" onclick="nav(this,'pricing')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-      </span>Pricing Plans</button>
-    <button class="nav-btn" onclick="nav(this,'helpcenter')">
-      <span class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </span>Help &amp; Support</button>
+    <div class="nav-section-label">Main</div>
+    <button class="nav-btn active" onclick="nav(this,'rules')"><span class="nav-icon">🗺️</span>Zip Rules</button>
+    <button class="nav-btn" onclick="nav(this,'settings')"><span class="nav-icon">⚙️</span>Settings</button>
+    <button class="nav-btn" onclick="nav(this,'analytics')"><span class="nav-icon">📊</span>Analytics</button>
+    <div class="nav-section-label">Developer</div>
+    <button class="nav-btn" onclick="nav(this,'embed')"><span class="nav-icon">🔗</span>Embed / Shortcode</button>
+    <button class="nav-btn" onclick="nav(this,'appblock')"><span class="nav-icon">🧩</span>App Block</button>
+    <button class="nav-btn" onclick="nav(this,'customcss')"><span class="nav-icon">🎨</span>Custom CSS</button>
+    <div class="nav-section-label">Account</div>
+    <button class="nav-btn" onclick="nav(this,'pricing')"><span class="nav-icon">💳</span>Pricing Plans</button>
+    <button class="nav-btn" onclick="nav(this,'faq')"><span class="nav-icon">❓</span>FAQ</button>
+    <button class="nav-btn" onclick="nav(this,'helpcenter')"><span class="nav-icon">📚</span>Help Center</button>
   </div>
   <div class="sidebar-footer">
     <div class="app-toggle-row" onclick="document.getElementById('app-chk').click();event.stopPropagation()">
@@ -894,96 +854,10 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 <!-- ═══════════ MAIN CONTENT ═══════════ -->
 <main class="content">
 
-<!-- ─── DASHBOARD ─── -->
-<div class="page active" id="page-dashboard">
-  <div class="page-header" style="align-items:center">
-    <div>
-      <div class="page-title">Dashboard</div>
-      <div class="page-sub" id="dash-plan-label">Free Plan</div>
-    </div>
-    <button class="btn btn-primary" onclick="navToRules()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Zip Code
-    </button>
-  </div>
-
-  <!-- Live banner -->
-  <div id="dash-live-banner" style="background:linear-gradient(135deg,#065f46,#059669);border-radius:14px;padding:20px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:10px;height:10px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.3);flex-shrink:0;animation:pulse-green 2s infinite"></div>
-      <div>
-        <div style="color:#fff;font-weight:700;font-size:15px">Widget is live on your store</div>
-        <div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:2px">Any changes you make here apply to your storefront instantly.</div>
-      </div>
-    </div>
-    <button onclick="navToPage('appblock')" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px)" onmouseover="this.style.background=\'rgba(255,255,255,.25)\'" onmouseout="this.style.background=\'rgba(255,255,255,.15)\'">Open Theme Editor</button>
-  </div>
-
-  <!-- Stats bar -->
-  <div style="background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);padding:22px 28px;margin-bottom:22px;display:grid;grid-template-columns:repeat(5,1fr);gap:0;box-shadow:var(--shadow-sm)">
-    <div style="text-align:center;padding:0 16px;border-right:1px solid var(--g100)">
-      <div style="font-size:32px;font-weight:900;font-family:var(--mono);color:var(--g900)" id="dash-total">—</div>
-      <div style="font-size:12px;color:var(--g500);margin-top:4px;font-weight:500">Zip codes</div>
-    </div>
-    <div style="text-align:center;padding:0 16px;border-right:1px solid var(--g100)">
-      <div style="font-size:32px;font-weight:900;font-family:var(--mono);color:var(--green-dk)" id="dash-allow">—</div>
-      <div style="font-size:12px;color:var(--g500);margin-top:4px;font-weight:500">Serviceable</div>
-    </div>
-    <div style="text-align:center;padding:0 16px;border-right:1px solid var(--g100)">
-      <div style="font-size:32px;font-weight:900;font-family:var(--mono);color:var(--red)" id="dash-deny">—</div>
-      <div style="font-size:12px;color:var(--g500);margin-top:4px;font-weight:500">Blocked</div>
-    </div>
-    <div style="text-align:center;padding:0 16px;border-right:1px solid var(--g100)">
-      <div style="font-size:32px;font-weight:900;font-family:var(--mono);color:var(--amber-dk)" id="dash-waitlist">0</div>
-      <div style="font-size:12px;color:var(--g500);margin-top:4px;font-weight:500">Waitlisted</div>
-    </div>
-    <div style="text-align:center;padding:0 16px">
-      <div style="font-size:32px;font-weight:900;font-family:var(--mono);color:var(--blue)" id="dash-drules">0</div>
-      <div style="font-size:12px;color:var(--g500);margin-top:4px;font-weight:500">Delivery rules</div>
-    </div>
-  </div>
-
-  <!-- Feature cards -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
-    <div class="dash-card" onclick="navToPage('rules')">
-      <div class="dash-card-icon" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#2563eb">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      </div>
-      <div class="dash-card-title">Zip Codes</div>
-      <div class="dash-card-desc">Add, edit, import, or export your service areas.</div>
-      <button class="dash-card-btn">Manage zip codes →</button>
-    </div>
-    <div class="dash-card" onclick="navToPage('deliveryrules')">
-      <div class="dash-card-icon" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);color:#16a34a">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      </div>
-      <div class="dash-card-title">Delivery Rules</div>
-      <div class="dash-card-desc">Set fees, cutoff times, and schedules by zone.</div>
-      <button class="dash-card-btn">Manage rules →</button>
-    </div>
-    <div class="dash-card" onclick="navToPage('waitlist')">
-      <div class="dash-card-icon" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);color:#d97706">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      </div>
-      <div class="dash-card-title">Waitlist</div>
-      <div class="dash-card-desc">View customers requesting delivery to new areas.</div>
-      <button class="dash-card-btn">View waitlist →</button>
-    </div>
-    <div class="dash-card" onclick="navToPage('settings')">
-      <div class="dash-card-icon" style="background:linear-gradient(135deg,#fdf4ff,#fae8ff);color:#9333ea">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-      </div>
-      <div class="dash-card-title">Widget</div>
-      <div class="dash-card-desc">Customize colors, text, and layout on your store.</div>
-      <button class="dash-card-btn">Customize widget →</button>
-    </div>
-  </div>
-</div>
-
 <!-- ─── ZIP RULES ─── -->
-<div class="page" id="page-rules">
+<div class="page active" id="page-rules">
   <div class="page-header">
-    <div><div class="page-title">Zip Codes</div><div class="page-sub">Add, edit, import, or export your service areas.</div></div>
+    <div><div class="page-title">Zip Code Rules</div><div class="page-sub">Add zip / postal codes and mark Allow or Deny. Widget checks these in real time.</div></div>
   </div>
   <div id="plan-limit-banner" style="display:none" class="limit-banner">
     ⚠️ <span id="plan-limit-msg" style="flex:1"></span>
@@ -1024,7 +898,7 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 <!-- ─── SETTINGS ─── -->
 <div class="page" id="page-settings">
   <div class="page-header">
-    <div><div class="page-title">Widget Customization</div><div class="page-sub">Customize colors, text, and layout. Changes reflect live in the preview.</div></div>
+    <div><div class="page-title">Widget Settings</div><div class="page-sub">Changes reflect live in the preview. Save to apply to your storefront.</div></div>
     <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
   </div>
   <div class="card">
@@ -1104,148 +978,6 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
   <div class="card">
     <div class="card-head"><h2>📊 Recent Checks</h2><button class="btn btn-ghost btn-sm" onclick="loadAnalytics()">↻ Refresh</button></div>
     <div id="analytics-body" style="padding:22px"><div class="empty"><div class="empty-icon">📊</div><p>Loading...</p></div></div>
-  </div>
-</div>
-
-<!-- ─── DELIVERY RULES ─── -->
-<div class="page" id="page-deliveryrules">
-  <div class="page-header">
-    <div><div class="page-title">Delivery Rules</div><div class="page-sub">Set custom fees, cutoff times, and delivery schedules by zip code zone.</div></div>
-    <button class="btn btn-primary" onclick="addDeliveryRule()">+ Add Rule</button>
-  </div>
-  <div class="card">
-    <div class="card-head"><h2>📋 Delivery Rule Zones</h2><span class="cnt" id="drules-cnt">0</span></div>
-    <div style="padding:22px">
-      <div id="drules-body">
-        <div class="empty"><div class="empty-icon">🚚</div><p>No delivery rules yet — click <strong>Add Rule</strong> to define fees and schedules by zone.</p></div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-head"><h2>💡 About Delivery Rules</h2></div>
-    <div style="padding:20px 22px">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
-        <div style="background:var(--blue-lt);border-radius:12px;padding:16px;border:1px solid #bfdbfe">
-          <div style="font-size:20px;margin-bottom:8px">💰</div>
-          <div style="font-size:13px;font-weight:700;color:var(--blue-dk);margin-bottom:4px">Delivery Fees</div>
-          <div style="font-size:12px;color:var(--g600);line-height:1.5">Assign different delivery charges for different zip code zones.</div>
-        </div>
-        <div style="background:var(--green-lt);border-radius:12px;padding:16px;border:1px solid var(--green-md)">
-          <div style="font-size:20px;margin-bottom:8px">⏰</div>
-          <div style="font-size:13px;font-weight:700;color:var(--green-xdk);margin-bottom:4px">Cutoff Times</div>
-          <div style="font-size:12px;color:var(--g600);line-height:1.5">Set order cutoff times per zone so customers know when same-day delivery is available.</div>
-        </div>
-        <div style="background:var(--purple-lt);border-radius:12px;padding:16px;border:1px solid #ddd6fe">
-          <div style="font-size:20px;margin-bottom:8px">📅</div>
-          <div style="font-size:13px;font-weight:700;color:var(--purple-dk);margin-bottom:4px">Schedules</div>
-          <div style="font-size:12px;color:var(--g600);line-height:1.5">Define delivery days and blackout dates for each zone.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─── WAITLIST ─── -->
-<div class="page" id="page-waitlist">
-  <div class="page-header">
-    <div><div class="page-title">Waitlist</div><div class="page-sub">Customers who checked a zip code not in your service area.</div></div>
-    <button class="btn btn-ghost" onclick="loadWaitlist()">↻ Refresh</button>
-  </div>
-  <div style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde047;border-radius:14px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:12px">
-    <span style="font-size:20px">📬</span>
-    <div>
-      <div style="font-size:13px;font-weight:700;color:#92400e">Demand Intelligence</div>
-      <div style="font-size:12px;color:#a16207;margin-top:2px;line-height:1.5">These are zip codes customers tried but you don't service yet. Consider adding high-demand areas to grow your reach.</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-head">
-      <h2>👥 Requested Zip Codes</h2>
-      <span class="cnt" id="waitlist-cnt">0</span>
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="exportWaitlist()">⬇️ Export CSV</button>
-    </div>
-    <div id="waitlist-body" style="padding:22px">
-      <div class="empty"><div class="empty-icon">📭</div><p>No waitlist entries yet. Entries appear when customers check an unserviced zip code.</p></div>
-    </div>
-  </div>
-</div>
-
-<!-- ─── APP SETTINGS ─── -->
-<div class="page" id="page-appsettings">
-  <div class="page-header">
-    <div><div class="page-title">Settings</div><div class="page-sub">Placement mode, cart behavior, custom CSS, and developer tools.</div></div>
-  </div>
-  <!-- Placement Mode (from appblock) -->
-  <div class="card">
-    <div class="card-head"><h2>🧩 Placement Mode</h2><button class="btn btn-primary btn-sm" onclick="saveBlock()">Save Placement</button></div>
-    <div class="ab-grid">
-      <div class="ab-card selected" id="ab2-auto" onclick="selectBlock2('auto')">
-        <div class="ab-icon">⚡</div>
-        <div class="ab-name">Auto Placement</div>
-        <div class="ab-desc">Widget auto-inserts above Add to Cart &amp; Buy Now. No theme edits needed. Works on all themes.</div>
-        <div style="margin-top:14px"><span style="background:var(--green-lt);color:var(--green-xdk);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px">✅ Recommended</span></div>
-      </div>
-      <div class="ab-card" id="ab2-manual" onclick="selectBlock2('manual')">
-        <div class="ab-icon">✏️</div>
-        <div class="ab-name">Manual Placement</div>
-        <div class="ab-desc">Auto placement disabled. Use the embed code to place the widget exactly where you need it.</div>
-        <div style="margin-top:14px"><span style="background:var(--g100);color:var(--g600);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px">Manual</span></div>
-      </div>
-      <div class="ab-card" id="ab2-cart" onclick="selectBlock2('cart')">
-        <div class="ab-icon">🛒</div>
-        <div class="ab-name">Cart Page Block</div>
-        <div class="ab-desc">Widget appears on the cart page before checkout. Validates delivery before order placement.</div>
-        <div style="margin-top:14px"><span style="background:var(--blue-lt);color:var(--blue-dk);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px">Cart</span></div>
-      </div>
-      <div class="ab-card" id="ab2-popup" onclick="selectBlock2('popup')">
-        <div class="ab-icon">💬</div>
-        <div class="ab-name">Popup / Overlay</div>
-        <div class="ab-desc">Widget triggers as a popup on Add to Cart click. Checks zip before proceeding to cart.</div>
-        <div style="margin-top:14px"><span style="background:var(--amber-lt);color:var(--amber-dk);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px">🔒 Starter+</span></div>
-      </div>
-    </div>
-  </div>
-  <!-- Cart Behavior -->
-  <div class="card">
-    <div class="card-head"><h2>🛒 Cart Button Behavior</h2><button class="btn btn-primary btn-sm" onclick="saveBlock()">Save</button></div>
-    <div class="behavior-row">
-      <div class="behavior-info">
-        <div class="behavior-label">Hide Add to Cart &amp; Buy Now until valid zip entered</div>
-        <div class="behavior-desc">Prevents customers from adding items before confirming delivery availability.</div>
-      </div>
-      <label class="toggle"><input type="checkbox" id="hide-cart-toggle2" checked/><span class="slider"></span></label>
-    </div>
-    <div class="behavior-row">
-      <div class="behavior-info">
-        <div class="behavior-label">Show Add to Cart &amp; Buy Now after valid zip confirmed</div>
-        <div class="behavior-desc">Reveals cart buttons automatically once delivery is confirmed for the entered zip.</div>
-      </div>
-      <label class="toggle"><input type="checkbox" id="show-valid-toggle2" checked/><span class="slider"></span></label>
-    </div>
-  </div>
-  <!-- Embed Codes -->
-  <div class="card"><div class="card-head"><h2>🔗 Embed &amp; Shortcode</h2></div>
-    <div style="padding:18px 22px">
-      <p style="font-size:14px;color:var(--g700);margin-bottom:12px">Paste in any Liquid file — product page, cart, homepage:</p>
-      <div class="code-block" id="c1b"><button class="copy-btn" onclick="cc('c1b')">Copy</button>&lt;div data-zipcheck
-  data-label="Check Delivery Availability"
-  data-placeholder="Enter zip / postal code"
-  data-btn-text="Check"&gt;
-&lt;/div&gt;
-&lt;script src="${HOST}/widget.js" async&gt;&lt;/script&gt;</div>
-    </div>
-  </div>
-  <!-- Custom CSS -->
-  <div class="card">
-    <div class="card-head"><h2>🎨 Custom CSS</h2><button class="btn btn-primary btn-sm" onclick="saveCSS()">💾 Save CSS</button></div>
-    <div style="padding:20px 22px">
-      <div style="font-size:13px;color:var(--g600);margin-bottom:12px;line-height:1.6">Target the widget using <code style="background:var(--g100);padding:2px 7px;border-radius:5px;font-family:var(--mono);font-size:12px">[data-zipcheck]</code> as the parent selector.</div>
-      <textarea class="css-editor" id="css-editor2" placeholder="/* Example */
-[data-zipcheck] .zc-wrap {
-  border-radius: 20px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-}"></textarea>
-    </div>
   </div>
 </div>
 
@@ -1497,7 +1229,7 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
 <!-- ═══════════════════════════════════════════════════════════
      HELP CENTER PAGE
 ════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-helpcenter" data-merged="true">
+<div class="page" id="page-helpcenter">
   <div class="page-header">
     <div>
       <div class="page-title">📚 Help Center</div>
@@ -1952,62 +1684,75 @@ let selectedBlock = 'auto';
 let _upgradeData  = {};
 
 // ── SHOPIFY APP BRIDGE v3 — Native sidebar navigation ─────────────────────
-// The UMD bundle at /umd/index.js exposes itself as window['app-bridge']
-// Init method is .default()  |  NavigationMenu is at .actions.NavigationMenu
-var _app     = null;
-var _navMenu = null;
+//
+// ROOT CAUSE of all previous failures:
+//   1. window['app-bridge'] is the correct UMD global (confirmed from source)
+//   2. NavigationMenu items MUST be AppLink instances — NOT plain objects.
+//      NavigationMenu.setItems() calls .payload on each item. Plain objects
+//      have no .payload getter → every item dispatches as undefined → blank nav.
+//
+var _app     = null;   // App Bridge app instance
+var _navMenu = null;   // NavigationMenu instance
+var _links   = {};     // keyed by page name → AppLink instance
 
 (function initAppBridge() {
   try {
-    // Correct global: window['app-bridge'] (lowercase, hyphenated)
-    var AB = window['app-bridge'];
-    if (!AB) { console.warn('[ZipCheck] App Bridge not found on window'); return; }
-
+    var AB   = window['app-bridge'];                   // ← correct UMD global
     var host = new URLSearchParams(window.location.search).get('host');
-    if (!host) { console.warn('[ZipCheck] App Bridge: ?host= param missing'); return; }
 
-    // .default is the createApp factory in the UMD build
+    if (!AB)   { console.warn('[ZipCheck] App Bridge not loaded'); return; }
+    if (!host) { console.warn('[ZipCheck] ?host= param missing — not embedded'); return; }
+
+    // Create the app instance (AB.default = compatibilityCreateApp)
     _app = AB.default({
-      apiKey: '${SHOPIFY_API_KEY}',
-      host:   host,
+      apiKey:        '${SHOPIFY_API_KEY}',
+      host:          host,
       forceRedirect: false
     });
 
-    // Build navigation — these items appear directly under the app name
-    // in the Shopify admin left sidebar (the red-boxed area in your screenshot)
-    var NavMenu = AB.actions.NavigationMenu;
-    _navMenu = NavMenu.create(_app, {
-      items: [
-        { label: 'Dashboard',            destination: '/app?page=dashboard'     },
-        { label: 'Zip Codes',            destination: '/app?page=rules'         },
-        { label: 'Delivery Rules',       destination: '/app?page=deliveryrules' },
-        { label: 'Waitlist',             destination: '/app?page=waitlist'      },
-        { label: 'Widget Customization', destination: '/app?page=settings'      },
-        { label: 'Settings',             destination: '/app?page=appsettings'   },
-        { label: 'Help & Support',       destination: '/app?page=helpcenter'    }
-      ],
-      active: {
-        destination: '/app?page=' + (new URLSearchParams(window.location.search).get('page') || 'dashboard')
-      }
+    // ── Build AppLink instances (REQUIRED — plain objects don't work) ──────
+    // AB.actions.AppLink.create() returns a proper ActionSet with .payload
+    var AL = AB.actions.AppLink;
+    var navItems = [
+      { key: 'dashboard',     label: 'Dashboard',            dest: '/app?page=dashboard'     },
+      { key: 'rules',         label: 'Zip Codes',            dest: '/app?page=rules'         },
+      { key: 'deliveryrules', label: 'Delivery Rules',       dest: '/app?page=deliveryrules' },
+      { key: 'waitlist',      label: 'Waitlist',             dest: '/app?page=waitlist'      },
+      { key: 'settings',      label: 'Widget Customization', dest: '/app?page=settings'      },
+      { key: 'appsettings',   label: 'Settings',             dest: '/app?page=appsettings'   },
+      { key: 'helpcenter',    label: 'Help & Support',       dest: '/app?page=helpcenter'    }
+    ];
+
+    navItems.forEach(function(item) {
+      _links[item.key] = AL.create(_app, { label: item.label, destination: item.dest });
     });
 
-    console.log('[ZipCheck] App Bridge + NavigationMenu initialised ✅');
+    // Determine which page is active right now
+    var startPage   = new URLSearchParams(window.location.search).get('page') || 'dashboard';
+    var activeLink  = _links[startPage] || _links['dashboard'];
+
+    // ── Create NavigationMenu with AppLink instances (not plain objects) ───
+    _navMenu = AB.actions.NavigationMenu.create(_app, {
+      items:  Object.values(_links),  // AppLink instances
+      active: activeLink              // AppLink instance (has .id)
+    });
+
+    console.log('[ZipCheck] App Bridge NavigationMenu registered ✅');
   } catch (e) {
     console.error('[ZipCheck] App Bridge init error:', e);
   }
 })();
 
-// Sync active nav item in the Shopify sidebar whenever the user navigates
+// Update the active nav highlight in Shopify's sidebar
 function _syncNav(page) {
   try {
-    if (!_navMenu || !window['app-bridge']) return;
-    window['app-bridge'].actions.NavigationMenu.update(_navMenu, {
-      active: { destination: '/app?page=' + page }
-    });
+    if (!_navMenu || !_links[page]) return;
+    // .set() on the NavigationMenu instance updates active and re-dispatches
+    _navMenu.set({ active: _links[page] });
   } catch(e) {}
 }
 
-// Keep ?page= in the URL so Shopify can deep-link back on reload
+// Keep ?page= in the URL so Shopify nav clicks deep-link correctly on reload
 function _syncUrl(page) {
   try {
     var sp = new URLSearchParams(window.location.search);
@@ -2016,24 +1761,6 @@ function _syncUrl(page) {
   } catch(e) {}
 }
 
-
-// ── NAV HELPERS ──────────────────────────────────────────────────────────────
-function navToRules() {
-  const btn = document.querySelector('[onclick*="nav(this,\'rules\')"]');
-  nav(btn,'rules');
-}
-function navToPage(page) {
-  const allBtns = document.querySelectorAll('.nav-btn');
-  for(const b of allBtns){
-    const oc = b.getAttribute('onclick')||'';
-    if(oc.includes("'"+page+"'")){nav(b,page);return;}
-  }
-  // fallback: just show the page
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const el=document.getElementById('page-'+page);
-  if(el){el.classList.add('active');}
-}
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function nav(btn, page) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -2041,12 +1768,12 @@ function nav(btn, page) {
   if (btn) btn.classList.add('active');
   const el = document.getElementById('page-' + page);
   if (el) el.classList.add('active');
-  if (page === 'dashboard')     loadDashboard();
   if (page === 'rules')         loadRules();
   if (page === 'analytics')     loadAnalytics();
-  if (page === 'settings')      { loadSettings(); }
+  if (page === 'settings')      loadSettings();
   if (page === 'customcss')     loadCSS();
   if (page === 'appblock')      loadPlacement();
+  if (page === 'dashboard')     loadDashboard();
   if (page === 'appsettings')   { loadPlacement2(); loadCSS2(); }
   if (page === 'waitlist')      loadWaitlist();
   if (page === 'deliveryrules') loadDeliveryRules();
@@ -2054,8 +1781,8 @@ function nav(btn, page) {
   _syncUrl(page);
 }
 function navToPage(page) {
-  const btn = document.querySelector('[onclick*="nav(this,\\''+page+'\\')"]') ||
-              document.querySelector('[onclick*="nav(this,\\"'+page+'\\")"]');
+  const btn = document.querySelector('[onclick*="nav(this,\''+page+'\')"]') ||
+              document.querySelector('[onclick*=\'nav(this,"'+page+'")\']');
   if (btn) nav(btn, page);
 }
 
@@ -2223,11 +1950,7 @@ async function loadCSS() {
   try { const r=await fetch(API+'/api/custom-css'); const j=await r.json(); if(j.css) document.getElementById('css-editor').value=j.css; } catch(e) {}
 }
 async function saveCSS() {
-  const ed1 = document.getElementById('css-editor');
-  const ed2 = document.getElementById('css-editor2');
-  const css = (ed1 ? ed1.value : '') || (ed2 ? ed2.value : '');
-  // sync both editors
-  if(ed1 && ed2){ if(document.activeElement===ed2) ed1.value=ed2.value; else ed2.value=ed1.value; }
+  const css = document.getElementById('css-editor').value;
   try { await fetch(API+'/api/custom-css',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({css})}); toast('💾 CSS saved and applied to your store','s'); }
   catch(e) { toast('Failed to save CSS','e'); }
 }
@@ -2442,128 +2165,6 @@ function showPreview(j){document.getElementById('imp-s1').style.display='none';d
 function impAction(){if(_rows.length===0){document.getElementById('file-inp').click();return;}const mode=document.querySelector('input[name="imp-mode"]:checked')?.value||'merge';const valid=_rows.filter(r=>r.valid);if(!valid.length){toast('No valid rows to import','e');return;}fetch(API+'/api/rules/import/commit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows:valid,mode})}).then(r=>r.json()).then(j=>{if(!j.success){toast(j.message||'Import failed','e');return;}toast('✅ Imported '+j.added+' rules'+(j.skipped?' ('+j.skipped+' skipped)':''),'s');closeImport();loadRules();}).catch(e=>toast('Error: '+e.message,'e'));}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
-async function loadDashboard() {
-  try {
-    const r = await fetch(API+'/api/rules');
-    const j = await r.json();
-    const rules = j.data || j.rules || (Array.isArray(j)?j:[]);
-    document.getElementById('dash-total').textContent = rules.length;
-    document.getElementById('dash-allow').textContent = rules.filter(r=>r.action==='allow'||r.type==='allow').length;
-    document.getElementById('dash-deny').textContent  = rules.filter(r=>r.action==='deny'||r.action==='block'||r.type==='deny').length;
-  } catch(e) {}
-  try {
-    const wr = await fetch(API+'/api/analytics/recent?limit=200');
-    const wj = await wr.json();
-    const noMatch = (wj.data||[]).filter(e=>e.result==='notfound'||e.result==='unknown');
-    const uniqueWait = [...new Set(noMatch.map(e=>e.zip))];
-    document.getElementById('dash-waitlist').textContent = uniqueWait.length;
-    document.getElementById('waitlist-cnt').textContent  = uniqueWait.length;
-  } catch(e) {}
-}
-
-// ── WAITLIST ──────────────────────────────────────────────────────────────────
-async function loadWaitlist() {
-  const el = document.getElementById('waitlist-body');
-  try {
-    const r = await fetch(API+'/api/analytics/recent?limit=500');
-    const j = await r.json();
-    const noMatch = (j.data||[]).filter(e=>e.result==='notfound'||e.result==='unknown'||e.result==='not_found');
-    const zipMap = {};
-    noMatch.forEach(e => { if(!zipMap[e.zip]) zipMap[e.zip]={zip:e.zip,count:0,last:e.timestamp}; zipMap[e.zip].count++; if(e.timestamp>zipMap[e.zip].last) zipMap[e.zip].last=e.timestamp; });
-    const rows = Object.values(zipMap).sort((a,b)=>b.count-a.count);
-    document.getElementById('waitlist-cnt').textContent = rows.length;
-    if (!rows.length) { el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>No waitlist entries yet. Entries appear when customers check an unserviced zip code.</p></div>'; return; }
-    el.innerHTML = '<table><thead><tr><th>Zip / Postal Code</th><th>Requests</th><th>Last Checked</th><th>Action</th></tr></thead><tbody>' +
-      rows.map(r=>\`<tr><td class="mono">\${r.zip}</td><td><span style="background:var(--amber-lt);color:var(--amber-dk);padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700">\${r.count} request\${r.count>1?'s':''}</span></td><td style="color:var(--g500);font-size:12px">\${new Date(r.last).toLocaleString()}</td><td><button class="btn btn-primary btn-xs" onclick="addFromWaitlist('\${r.zip}')">+ Add Zone</button></td></tr>\`).join('') +
-      '</tbody></table>';
-  } catch(e) { el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load waitlist data</p></div>'; }
-}
-function addFromWaitlist(zip) {
-  nav(document.querySelectorAll('.nav-btn')[1],'rules');
-  setTimeout(()=>{document.getElementById('f-zip').value=zip;document.getElementById('f-zip').focus();toast('📍 Zip '+zip+' pre-filled — set type and save!','n');},200);
-}
-function exportWaitlist() {
-  const rows = document.querySelectorAll('#waitlist-body tr');
-  if(!rows.length){toast('No data to export','e');return;}
-  let csv='Zip Code,Requests\n';
-  rows.forEach(r=>{const cells=r.querySelectorAll('td');if(cells.length>=2)csv+=cells[0].textContent+','+cells[1].textContent.replace(/[^0-9]/g,'')+'\n';});
-  const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='waitlist.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Waitlist exported','s');
-}
-
-// ── DELIVERY RULES ────────────────────────────────────────────────────────────
-let deliveryRules = [];
-async function loadDeliveryRules() {
-  try {
-    const r = await fetch(API+'/api/groups');
-    const j = await r.json();
-    deliveryRules = j.data || j.groups || (Array.isArray(j)?j:[]);
-    document.getElementById('drules-cnt').textContent = deliveryRules.length;
-    document.getElementById('dash-drules').textContent = deliveryRules.length;
-    renderDeliveryRules();
-  } catch(e) {}
-}
-function renderDeliveryRules() {
-  const el = document.getElementById('drules-body');
-  if (!deliveryRules.length) { el.innerHTML='<div class="empty"><div class="empty-icon">🚚</div><p>No delivery rules yet — click <strong>Add Rule</strong> to define fees and schedules by zone.</p></div>'; return; }
-  el.innerHTML = '<table><thead><tr><th>Zone Name</th><th>Zip Codes</th><th>Fee</th><th>Status</th><th>Delete</th></tr></thead><tbody>' +
-    deliveryRules.map(r=>{
-      const id=r.id||r._id;
-      const name=r.name||'Unnamed Zone';
-      const zips=(r.zipCodes||[]).length;
-      const fee=r.fee?'$'+r.fee:'—';
-      const active=r.status==='active'||r.enabled!==false;
-      return \`<tr><td style="font-weight:600">\${name}</td><td><span class="cnt">\${zips} zip\${zips!==1?'s':''}</span></td><td style="font-family:var(--mono);font-weight:600">\${fee}</td><td><span class="badge \${active?'badge-allow':'badge-deny'}">\${active?'Active':'Inactive'}</span></td><td><button class="btn btn-danger btn-xs" onclick="deleteDeliveryRule('\${id}')">Delete</button></td></tr>\`;
-    }).join('') + '</tbody></table>';
-}
-async function addDeliveryRule() {
-  const name = prompt('Zone name (e.g. "Downtown", "Zone A"):');
-  if (!name) return;
-  try {
-    const r = await fetch(API+'/api/groups',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,status:'active',zipCodes:[]})});
-    const j = await r.json();
-    if(!r.ok){toast(j.message||'Failed to add rule','e');return;}
-    toast('✅ Delivery rule "'+name+'" created','s');
-    loadDeliveryRules();
-  } catch(e){toast('Error: '+e.message,'e');}
-}
-async function deleteDeliveryRule(id) {
-  if(!confirm('Delete this delivery rule zone?'))return;
-  await fetch(API+'/api/groups/'+id,{method:'DELETE'});
-  toast('🗑️ Rule deleted','n');
-  loadDeliveryRules();
-}
-
-// ── APP SETTINGS (mirrors appblock) ──────────────────────────────────────────
-async function loadPlacement2() {
-  try {
-    const r = await fetch(API+'/api/placement');
-    const j = await r.json();
-    selectedBlock = j.mode || 'auto';
-    ['auto','manual','cart','popup'].forEach(m => {
-      const el = document.getElementById('ab2-'+m);
-      if(el) el.classList.toggle('selected', m===selectedBlock);
-    });
-    const hct = document.getElementById('hide-cart-toggle2');
-    const svt = document.getElementById('show-valid-toggle2');
-    if(hct) hct.checked = j.hideCart !== false;
-    if(svt) svt.checked = j.showOnValid !== false;
-  } catch(e) {}
-}
-function selectBlock2(mode) {
-  if (mode==='popup' && !PLAN_FEATURES[currentPlan].popup) { toast('🔒 Popup mode requires Starter plan or above','w'); return; }
-  selectedBlock = mode;
-  ['auto','manual','cart','popup'].forEach(m => {
-    const el1 = document.getElementById('ab-'+m);
-    const el2 = document.getElementById('ab2-'+m);
-    if(el1) el1.classList.toggle('selected', m===mode);
-    if(el2) el2.classList.toggle('selected', m===mode);
-  });
-}
-async function loadCSS2() {
-  try { const r=await fetch(API+'/api/custom-css'); const j=await r.json(); const ed=document.getElementById('css-editor2'); if(j.css&&ed) ed.value=j.css; } catch(e) {}
-}
-
 (async function initApp(){
   try {
     const r = await fetch(API+'/api/app-status');
@@ -2571,13 +2172,13 @@ async function loadCSS2() {
     if (j.plan) { currentPlan = j.plan; }
     const planNames = {free:'Free Plan',basic:'Basic Plan',starter:'Starter Plan',pro:'Pro Plan'};
     const pLabel = document.getElementById('dash-plan-label');
-    if(pLabel) pLabel.textContent = planNames[j.plan||'free'] || 'Free Plan';
+    if (pLabel) pLabel.textContent = planNames[j.plan||'free'] || 'Free Plan';
     document.getElementById('app-chk').checked = j.active !== false;
     document.getElementById('status-dot').className = 'status-indicator' + (j.active!==false?'':' off');
     document.getElementById('status-text').textContent = j.active!==false ? 'App Active' : 'App Inactive';
     document.getElementById('status-sub').textContent  = j.active!==false ? 'Widget live on store' : 'Widget paused';
     const banner = document.getElementById('dash-live-banner');
-    if(banner && j.active===false) banner.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
+    if (banner && j.active===false) banner.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
   } catch(e) {}
 
   // Honour ?page= deep-link — Shopify nav clicks reload the iframe with this param
