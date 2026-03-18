@@ -562,6 +562,7 @@ function buildAdminHTML() {
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ZipCheck — Admin</title>
 <script src="https://js.stripe.com/v3/"></script>
+<script src="https://unpkg.com/@shopify/app-bridge@3/umd/index.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -582,10 +583,10 @@ function buildAdminHTML() {
   --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
   --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
 }
-body{font-family:var(--font);background:#f0f2f5;color:var(--g900);height:100vh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);background:#f0f2f5;color:var(--g900);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-/* ══ SIDEBAR ══════════════════════════════════════════════════════════════ */
-.sidebar{width:232px;background:#ffffff;border-right:1px solid var(--g200);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;height:100vh;box-shadow:2px 0 8px rgba(0,0,0,.06)}
+/* ══ SIDEBAR — hidden; kept in DOM so nav() queries still resolve ══════════ */
+.sidebar{display:none}
 .sidebar-brand{padding:20px 16px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--g100)}
 .brand-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--green),var(--green-dk));border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0;box-shadow:0 4px 12px rgba(0,166,126,.4)}
 .brand-name{font-size:15px;font-weight:800;color:var(--g900);line-height:1.2;letter-spacing:-.2px}
@@ -613,7 +614,7 @@ body{font-family:var(--font);background:#f0f2f5;color:var(--g900);height:100vh;d
 .toggle-pill input:checked+.toggle-track::after{transform:translateX(15px)}
 
 /* ══ CONTENT ══════════════════════════════════════════════════════════════ */
-.content{flex:1;overflow-y:auto;padding:28px 32px;height:100vh}
+.content{width:100%;padding:28px 32px;min-height:100vh;overflow-y:auto}
 .page{display:none}.page.active{display:block;max-width:960px}
 .page-header{margin-bottom:26px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .page-title{font-size:24px;font-weight:900;color:var(--g900);letter-spacing:-.5px}
@@ -825,7 +826,7 @@ hr.plan-div{border:none;border-top:1px solid var(--g100);margin:14px 0}
 #toast.n{background:linear-gradient(135deg,var(--g800),var(--g900));color:#fff}
 
 @media(max-width:960px){.plans-grid{grid-template-columns:repeat(2,1fr)}.settings-2col{grid-template-columns:1fr}}
-@media(max-width:640px){.sidebar{display:none}.stats{grid-template-columns:1fr 1fr}.plans-grid{grid-template-columns:1fr}.settings-2col{grid-template-columns:1fr}}
+@media(max-width:640px){.stats{grid-template-columns:1fr 1fr}.plans-grid{grid-template-columns:1fr}.settings-2col{grid-template-columns:1fr}}
 
 /* ══ DASHBOARD CARDS ══ */
 .dash-card{background:var(--white);border:1px solid var(--g200);border-radius:var(--r-xl);padding:22px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm)}
@@ -1936,6 +1937,35 @@ add_shortcode('zipcheck', 'zipcheck_widget');</div></div>
 
 <script>
 const API = window.location.origin;
+
+// ── SHOPIFY APP BRIDGE — registers nav in the Shopify admin sidebar ────────
+var _appBridge = null;
+var _appBridgeNavMenu = null;
+(function initAppBridge() {
+  try {
+    var host = new URLSearchParams(window.location.search).get('host');
+    if (!host || !window['app-bridge']) return;
+    var AppBridge = window['app-bridge'];
+    _appBridge = AppBridge.default({
+      apiKey: '${SHOPIFY_API_KEY}',
+      host: host,
+      forceRedirect: false
+    });
+    var NavigationMenu = AppBridge.actions.NavigationMenu;
+    _appBridgeNavMenu = NavigationMenu.create(_appBridge, {
+      items: [
+        { label: 'Dashboard',            destination: '/app?page=dashboard' },
+        { label: 'Zip Codes',            destination: '/app?page=rules' },
+        { label: 'Delivery Rules',       destination: '/app?page=deliveryrules' },
+        { label: 'Waitlist',             destination: '/app?page=waitlist' },
+        { label: 'Widget Customization', destination: '/app?page=settings' },
+        { label: 'Settings',             destination: '/app?page=appsettings' },
+        { label: 'Help & Support',       destination: '/app?page=helpcenter' }
+      ],
+      active: { destination: '/app?page=dashboard' }
+    });
+  } catch(e) { console.warn('App Bridge init skipped:', e.message); }
+})();
 const PLAN_LIMITS   = { free:50, basic:500, starter:5000, pro:Infinity };
 const PLAN_FEATURES = {
   free:    { bulk:false, popup:false, header:false },
@@ -1984,6 +2014,21 @@ function nav(btn, page) {
   if (page === 'appsettings')   { loadPlacement2(); loadCSS2(); }
   if (page === 'waitlist')      loadWaitlist();
   if (page === 'deliveryrules') loadDeliveryRules();
+
+  // Sync App Bridge navigation highlight
+  try {
+    if (_appBridgeNavMenu) {
+      var NavigationMenu = window['app-bridge'].actions.NavigationMenu;
+      NavigationMenu.update(_appBridgeNavMenu, { active: { destination: '/app?page=' + page } });
+    }
+  } catch(e) {}
+
+  // Keep URL in sync so page refreshes land on the same section
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    sp.set('page', page);
+    window.history.replaceState(null, '', window.location.pathname + '?' + sp.toString());
+  } catch(e) {}
 }
 function navToPage(page) {
   const btn = document.querySelector('[onclick*="nav(this,\\''+page+'\\')"]') ||
@@ -2511,10 +2556,19 @@ async function loadCSS2() {
     const banner = document.getElementById('dash-live-banner');
     if(banner && j.active===false) banner.style.background = 'linear-gradient(135deg,#374151,#1f2937)';
   } catch(e) {}
-  // Set dashboard as first active nav
-  const dashBtn = document.querySelectorAll('.nav-btn')[0];
-  if(dashBtn) dashBtn.classList.add('active');
-  loadDashboard(); upv();
+
+  // Respect ?page= deep-link from App Bridge nav clicks
+  const startPage = new URLSearchParams(window.location.search).get('page') || 'dashboard';
+  const startBtn  = document.querySelector('[onclick*="nav(this,\''+startPage+'\')"]') ||
+                    document.querySelector('[onclick*=\'nav(this,"'+startPage+'")\']');
+  if (startBtn) {
+    nav(startBtn, startPage);
+  } else {
+    const dashBtn = document.querySelectorAll('.nav-btn')[0];
+    if(dashBtn) dashBtn.classList.add('active');
+    loadDashboard();
+  }
+  upv();
 })();
 </script></body></html>`;
 }
