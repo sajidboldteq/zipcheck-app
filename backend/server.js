@@ -628,7 +628,8 @@ body::before{content:'';position:fixed;top:0;left:0;height:2px;background:#30303
 
 /* ══ CONTENT ══════════════════════════════════════════════════════════════ */
 .content{width:100%;padding:28px 32px;min-height:100vh;overflow-y:auto}
-.page{display:none}.page.active{display:block;max-width:960px}
+.page{display:none;opacity:0}.page.active{display:block;max-width:960px;animation:zc-page-in .15s ease forwards}
+@keyframes zc-page-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .page-header{margin-bottom:26px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .page-title{font-size:24px;font-weight:900;color:var(--g900);letter-spacing:-.5px}
 .page-sub{font-size:13.5px;color:var(--g500);margin-top:4px;line-height:1.5}
@@ -1711,6 +1712,9 @@ let _upgradeData  = {};
 // against each NavigationMenu item's destination. The server-side redirect
 // above ensures ?page=X is always in the URL, so matching always works.
 var _app = null, _navMenu = null, _links = {};
+// Track the currently active page so nav() can skip redundant re-renders
+// and data fetches when the user clicks the already-active menu item.
+var _currentPage = '';
 
 (function initAppBridge() {
   try {
@@ -1722,6 +1726,15 @@ var _app = null, _navMenu = null, _links = {};
     _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
 
     var AL = AB.actions.AppLink;
+    // Preserve the host param in every AppLink destination so App Bridge
+    // can re-initialise correctly after navigating between pages.
+    // Without it the next page load has no ?host= → _navMenu stays null →
+    // Shopify sidebar falls back to the last menu item (Help Center).
+    var hostParam = new URLSearchParams(window.location.search).get('host') || '';
+    function makeDestination(pageKey) {
+      return '/app?page=' + pageKey + (hostParam ? '&host=' + encodeURIComponent(hostParam) : '');
+    }
+
     var pages = [
       { key: 'rules',      label: 'Zip Rules'     },
       { key: 'settings',   label: 'Settings'      },
@@ -1732,7 +1745,7 @@ var _app = null, _navMenu = null, _links = {};
       { key: 'helpcenter', label: 'Help Center'   }
     ];
     pages.forEach(function(p) {
-      _links[p.key] = AL.create(_app, { label: p.label, destination: '/app?page=' + p.key });
+      _links[p.key] = AL.create(_app, { label: p.label, destination: makeDestination(p.key) });
     });
 
     // ?page= is guaranteed to be in the URL (server redirects if missing)
@@ -1742,6 +1755,12 @@ var _app = null, _navMenu = null, _links = {};
       items:  pages.map(function(p) { return _links[p.key]; }),
       active: _links[startKey] || _links['rules']
     });
+
+    // Re-assert the active item after App Bridge's own URL-matching scan
+    // completes (runs async on the next tick). Without this the sidebar
+    // can temporarily show whichever item its URL scan settles on.
+    setTimeout(function() { _syncNav(startKey); }, 0);
+
     console.log('[ZipCheck] NavigationMenu ready — page: ' + startKey);
   } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message || e); }
 })();
@@ -1771,6 +1790,11 @@ function findNavBtn(page) {
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function nav(btn, page) {
+  // Prevent redundant re-renders and data refetches when the user clicks
+  // the item that is already active.
+  if (_currentPage === page) return;
+  _currentPage = page;
+
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   if (btn) btn.classList.add('active');
@@ -2176,6 +2200,10 @@ function impAction(){if(_rows.length===0){document.getElementById('file-inp').cl
 (async function initApp(){
   // Determine which page to show from the URL (Shopify nav injects ?page=X)
   var startPage = new URLSearchParams(window.location.search).get('page') || 'rules';
+
+  // Seed _currentPage so nav() won't double-load data if the user clicks
+  // the already-active sidebar item right after the page finishes loading.
+  _currentPage = startPage;
 
   // ── Step 1: Show the correct page INSTANTLY (synchronous — zero delay) ──────
   document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
