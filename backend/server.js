@@ -1708,34 +1708,30 @@ let selectedBlock = 'auto';
 let _upgradeData  = {};
 
 // ── SHOPIFY APP BRIDGE v3 ─────────────────────────────────────────────────
-// Active state is driven by URL matching: Shopify compares the iframe URL
-// against each NavigationMenu item's destination. The server-side redirect
-// above ensures ?page=X is always in the URL, so matching always works.
-var _app = null, _navMenu = null, _links = {}, _appHistory = null;
+// _AB and _pages are hoisted to module scope so _syncNav can call
+// NavigationMenu.create() at any time — not just inside the IIFE.
+var _AB      = null;   // the app-bridge module reference
+var _app     = null;   // the App Bridge app instance
+var _navMenu = null;   // current NavigationMenu action instance
+var _links   = {};     // AppLink instances keyed by page key
+var _pages   = [];     // ordered page definitions (needed for re-create)
+var _appHistory = null; // App Bridge History action for URL sync
 // Track the currently active page so nav() can skip redundant re-renders
 // and data fetches when the user clicks the already-active menu item.
 var _currentPage = '';
 
 (function initAppBridge() {
   try {
-    var AB = window['app-bridge'];
-    var host = new URLSearchParams(window.location.search).get('host');
-    if (!AB)   { console.warn('[ZipCheck] App Bridge not loaded'); return; }
+    _AB = window['app-bridge'];
+    var params = new URLSearchParams(window.location.search);
+    var host   = params.get('host');
+
+    if (!_AB)  { console.warn('[ZipCheck] App Bridge not loaded'); return; }
     if (!host) { console.warn('[ZipCheck] No ?host= param'); return; }
 
-    _app = AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
+    _app = _AB.default({ apiKey: '${SHOPIFY_API_KEY}', host: host, forceRedirect: false });
 
-    var AL = AB.actions.AppLink;
-    // Preserve the host param in every AppLink destination so App Bridge
-    // can re-initialise correctly after navigating between pages.
-    // Without it the next page load has no ?host= → _navMenu stays null →
-    // Shopify sidebar falls back to the last menu item (Help Center).
-    var hostParam = new URLSearchParams(window.location.search).get('host') || '';
-    function makeDestination(pageKey) {
-      return '/app?page=' + pageKey + (hostParam ? '&host=' + encodeURIComponent(hostParam) : '');
-    }
-
-    var pages = [
+    _pages = [
       { key: 'rules',      label: 'Zip Rules'     },
       { key: 'settings',   label: 'Settings'      },
       { key: 'analytics',  label: 'Analytics'     },
@@ -1744,63 +1740,77 @@ var _currentPage = '';
       { key: 'pricing',    label: 'Pricing Plans' },
       { key: 'helpcenter', label: 'Help Center'   }
     ];
-    pages.forEach(function(p) {
-      _links[p.key] = AL.create(_app, { label: p.label, destination: makeDestination(p.key) });
+
+    // Bare /app?page=X destinations — no host, no hmac, nothing extra.
+    // Shopify appends its own context params (host, shop, hmac, timestamp)
+    // when it navigates the iframe, so App Bridge always initialises.
+    // App Bridge v3 URL-matching checks pathname + page param only and
+    // ignores any extra params, so these bare destinations always match.
+    _pages.forEach(function(p) {
+      _links[p.key] = _AB.actions.AppLink.create(_app, {
+        label:       p.label,
+        destination: '/app?page=' + p.key
+      });
     });
 
-    // ?page= is guaranteed to be in the URL (server redirects if missing)
-    var startKey = new URLSearchParams(window.location.search).get('page') || 'rules';
+    var startKey = params.get('page') || 'rules';
 
-    _navMenu = AB.actions.NavigationMenu.create(_app, {
-      items:  pages.map(function(p) { return _links[p.key]; }),
+    // Initial NavigationMenu creation — sets active on first load.
+    _navMenu = _AB.actions.NavigationMenu.create(_app, {
+      items:  _pages.map(function(p) { return _links[p.key]; }),
       active: _links[startKey] || _links['rules']
     });
 
-    // App Bridge History action — this is the critical piece.
-    // window.history.replaceState() only updates the local browser URL bar.
-    // Shopify's host app never sees those changes and its NavigationMenu
-    // URL-matcher stays locked on the initial load URL (→ Help Center stays
-    // highlighted forever). _appHistory.replace() sends the URL change
-    // through the App Bridge message bus that Shopify actually listens to,
-    // so the sidebar active highlight updates correctly on every nav click.
-    _appHistory = AB.actions.History.create(_app);
+    // App Bridge History action — routes URL changes through the App Bridge
+    // message bus so Shopify's host receives them (replaceState is invisible
+    // across the iframe boundary).
+    try { _appHistory = _AB.actions.History.create(_app); } catch(e) {}
 
-    // Re-assert the active item after App Bridge's own URL-matching scan
-    // completes (runs async on the next tick). Without this the sidebar
-    // can temporarily show whichever item its URL scan settles on.
-    setTimeout(function() { _syncNav(startKey); }, 0);
+    // Staggered re-assertions: App Bridge v3 runs its own async URL-matching
+    // scan after NavigationMenu.create() and after any History.replace().
+    // _syncNav re-creates the NavigationMenu from scratch (not .set()) so it
+    // dispatches a complete, authoritative payload that the host cannot ignore.
+    // Firing at 0 / 50 / 200 ms covers all observed async timing windows.
+    [0, 50, 200].forEach(function(ms) {
+      setTimeout(function() { _syncNav(startKey); }, ms);
+    });
 
     console.log('[ZipCheck] NavigationMenu ready — page: ' + startKey);
   } catch(e) { console.error('[ZipCheck] App Bridge error:', e.message || e); }
 })();
 
 function _syncNav(page) {
+  // Re-CREATE the NavigationMenu from scratch on every nav change.
+  //
+  // Why re-create instead of _navMenu.set({ active })?
+  // .set() sends a mutation/UPDATE message. Shopify's host can — and does —
+  // override it when its own URL-matching scan settles asynchronously after a
+  // History.replace(). A fresh NavigationMenu.create() dispatches a complete
+  // SHOW action with the full items + active payload; the host treats this as
+  // the authoritative state and does not re-scan URLs to override it.
   try {
-    if (_navMenu && _links[page]) {
-      // Set immediately and again on the next tick.
-      // The History.replace() above triggers Shopify's URL-matching scan
-      // asynchronously; confirming active on both ticks ensures the sidebar
-      // highlight is correct regardless of which settles first.
-      _navMenu.set({ active: _links[page] });
-      setTimeout(function() {
-        try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
-      }, 0);
-    }
-  } catch(e) {}
+    if (!_AB || !_app || !_links[page]) return;
+    _navMenu = _AB.actions.NavigationMenu.create(_app, {
+      items:  _pages.map(function(p) { return _links[p.key]; }),
+      active: _links[page]
+    });
+  } catch(e) { console.warn('[ZipCheck] _syncNav error:', e.message || e); }
 }
+
 function _syncUrl(page) {
+  // Route the URL change through the App Bridge message bus.
+  // window.history.replaceState() only updates the local browser URL bar —
+  // Shopify's host never sees it and its URL-matching logic stays stale.
+  // _appHistory.replace() sends the new URL as an App Bridge message so the
+  // host updates its internal state and re-matches navigation items correctly.
   try {
     var sp = new URLSearchParams(window.location.search);
     sp.set('page', page);
     var newPath = window.location.pathname + '?' + sp.toString();
     if (_appHistory) {
-      // Route the URL change through App Bridge so Shopify's host app
-      // receives the update via the message bus and re-runs its
-      // NavigationMenu URL-matching logic → correct item gets highlighted.
       _appHistory.replace({ path: newPath });
     } else {
-      // Fallback for non-embedded / local dev environments where
-      // App Bridge is unavailable.
+      // Non-embedded / local-dev fallback
       window.history.replaceState(null, '', newPath);
     }
   } catch(e) {}
@@ -1835,8 +1845,16 @@ function nav(btn, page) {
   if (page === 'settings')  loadSettings();
   if (page === 'customcss') loadCSS();
   if (page === 'appblock')  loadPlacement();
-  _syncNav(page);
+
+  // Sync URL first so the host receives the new path before NavigationMenu
+  // re-create fires; this prevents a URL-match race on the host side.
   _syncUrl(page);
+
+  // Re-create NavigationMenu with staggered retries to outlast any async
+  // URL-scan the host runs after receiving the History.replace() message.
+  [0, 50, 200].forEach(function(ms) {
+    setTimeout(function() { _syncNav(page); }, ms);
+  });
 }
 function navToPage(page) {
   var btn = findNavBtn(page);
