@@ -1711,7 +1711,7 @@ let _upgradeData  = {};
 // Active state is driven by URL matching: Shopify compares the iframe URL
 // against each NavigationMenu item's destination. The server-side redirect
 // above ensures ?page=X is always in the URL, so matching always works.
-var _app = null, _navMenu = null, _links = {};
+var _app = null, _navMenu = null, _links = {}, _appHistory = null;
 // Track the currently active page so nav() can skip redundant re-renders
 // and data fetches when the user clicks the already-active menu item.
 var _currentPage = '';
@@ -1756,6 +1756,15 @@ var _currentPage = '';
       active: _links[startKey] || _links['rules']
     });
 
+    // App Bridge History action — this is the critical piece.
+    // window.history.replaceState() only updates the local browser URL bar.
+    // Shopify's host app never sees those changes and its NavigationMenu
+    // URL-matcher stays locked on the initial load URL (→ Help Center stays
+    // highlighted forever). _appHistory.replace() sends the URL change
+    // through the App Bridge message bus that Shopify actually listens to,
+    // so the sidebar active highlight updates correctly on every nav click.
+    _appHistory = AB.actions.History.create(_app);
+
     // Re-assert the active item after App Bridge's own URL-matching scan
     // completes (runs async on the next tick). Without this the sidebar
     // can temporarily show whichever item its URL scan settles on.
@@ -1766,13 +1775,34 @@ var _currentPage = '';
 })();
 
 function _syncNav(page) {
-  try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
+  try {
+    if (_navMenu && _links[page]) {
+      // Set immediately and again on the next tick.
+      // The History.replace() above triggers Shopify's URL-matching scan
+      // asynchronously; confirming active on both ticks ensures the sidebar
+      // highlight is correct regardless of which settles first.
+      _navMenu.set({ active: _links[page] });
+      setTimeout(function() {
+        try { if (_navMenu && _links[page]) _navMenu.set({ active: _links[page] }); } catch(e) {}
+      }, 0);
+    }
+  } catch(e) {}
 }
 function _syncUrl(page) {
   try {
     var sp = new URLSearchParams(window.location.search);
     sp.set('page', page);
-    window.history.replaceState(null, '', window.location.pathname + '?' + sp.toString());
+    var newPath = window.location.pathname + '?' + sp.toString();
+    if (_appHistory) {
+      // Route the URL change through App Bridge so Shopify's host app
+      // receives the update via the message bus and re-runs its
+      // NavigationMenu URL-matching logic → correct item gets highlighted.
+      _appHistory.replace({ path: newPath });
+    } else {
+      // Fallback for non-embedded / local dev environments where
+      // App Bridge is unavailable.
+      window.history.replaceState(null, '', newPath);
+    }
   } catch(e) {}
 }
 
